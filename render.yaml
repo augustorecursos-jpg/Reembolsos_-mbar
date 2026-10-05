@@ -1,36 +1,32 @@
-# Blueprint do Render para o Portal de Reembolsos (render.com → New → Blueprint → este repositório).
-# Plano Starter + disco persistente: base, solicitações e documentos anexados sobrevivem a novos deploys.
+# Blueprint do Render (render.com → New → Blueprint → este repositório).
+#
+# VERSÃO DE TESTE: plano gratuito, sem disco permanente. Os dados de demonstração são criados a cada
+# inicialização e tudo o que for feito no teste se perde quando o serviço reinicia ou "dorme".
+#
+# Para PRODUÇÃO, troque para:
+#   plan: starter
+#   startCommand: npm start
+# e acrescente o disco (os dados e anexos passam a ser permanentes):
+#   disk:
+#     name: dados-reembolsos
+#     mountPath: /var/data
+#     sizeGB: 5
+#   + a variável DATA_DIR = /var/data
 services:
   - type: web
     name: reembolsos-ambar
     runtime: node
-    plan: starter
+    plan: free
     region: virginia
     buildCommand: npm ci
-    startCommand: npm start
+    startCommand: npm run seed && npm start
     healthCheckPath: /healthz
-    disk:
-      name: dados-reembolsos
-      mountPath: /var/data
-      sizeGB: 10
     envVars:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
         value: "22"
-      - key: DATA_DIR
-        value: /var/data
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_PASSWORD
-        sync: false
-      - key: PORTAL_URL
-        sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
         sync: false
