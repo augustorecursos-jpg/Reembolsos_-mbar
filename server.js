@@ -648,7 +648,7 @@ app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
     const suc = R.lerMarcador(l.sucedido);
     validos.push({
       cpf, matricula, nome,
-      email: String(l.email || '').trim().toLowerCase(),
+      email: /@/.test(String(l.email || '')) ? String(l.email).trim().toLowerCase() : '', // "-" ou vazio = sem e-mail
       unidade: String(l.unidade || '').trim(),
       data_admissao: R.normalizarData(l.data_admissao),
       sucedido: suc === 'S' ? 1 : suc === 'N' ? 0 : null,

@@ -53,7 +53,7 @@ Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
 ## Fluxo
 
 1. **RH importa a base mensal** (Base de elegibilidade): planilha de colaboradores e de dependentes
-   (modelo em Excel com as abas Instruções, Colaboradores e Dependentes em `public/exemplos/base-elegibilidade-modelo.xlsx`; também aceita CSV). Modo *adicionar/atualizar* ou *substituir* (quem sai da planilha perde o acesso;
+   (modelo em Excel com as abas Instruções, Colaboradores e Dependentes em `public/exemplos/base-elegibilidade-modelo.xlsx`; também aceita CSV; os cabeçalhos podem vir com acentos e espaços, como `Matrícula`, `Filial` e `Data de Admissão`). Modo *adicionar/atualizar* ou *substituir* (quem sai da planilha perde o acesso;
    o histórico permanece). Cada carga fica registrada.
 2. **Colaborador acessa** com o CPF. Vê apenas os benefícios e os dependentes elegíveis, com o saldo de cada um.
 3. **Nova solicitação** em 5 passos: benefício → beneficiário → data e valor do documento → anexos obrigatórios →

@@ -328,12 +328,19 @@ const CAMPOS = {
   dep: ['cpf_titular', 'nome', 'cpf', 'parentesco', 'data_nascimento', 'medicamento', 'educacional', 'creche', 'oculos'],
 };
 // Nomes alternativos aceitos no cabeçalho da planilha.
+// Ex.: "Filial", "Lotação", "Data de Admissão", "CPF do Titular" e "Matrícula/Chapa" são reconhecidos.
 const SINONIMOS = {
-  chapa: 'matricula', 'matricula/chapa': 'matricula', e_mail: 'email', lotacao: 'unidade', unidade_lotacao: 'unidade', filial: 'unidade',
-  admissao: 'data_admissao', desligamento: 'data_desligamento', nascimento: 'data_nascimento', titular: 'cpf_titular', cpf_do_titular: 'cpf_titular',
-  creche_baba: 'creche', baba: 'creche', educacao: 'educacional', medicamentos: 'medicamento', nome_do_dependente: 'nome', dependente: 'nome',
+  chapa: 'matricula', matricula_chapa: 'matricula', e_mail: 'email', lotacao: 'unidade', unidade_lotacao: 'unidade',
+  filial: 'unidade', filiall: 'unidade', local: 'unidade', local_trabalho: 'unidade',
+  admissao: 'data_admissao', desligamento: 'data_desligamento', nascimento: 'data_nascimento', titular: 'cpf_titular',
+  creche_baba: 'creche', baba: 'creche', educacao: 'educacional', medicamentos: 'medicamento', nome_dependente: 'nome', dependente: 'nome',
+  nome_completo: 'nome', nome_colaborador: 'nome', grau_parentesco: 'parentesco',
 };
-const chaveCabecalho = (c) => { const k = semAcento(c).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); return SINONIMOS[k] || k; };
+/** Normaliza o cabeçalho: sem acentos, maiúsculas ou espaços, e sem “de/do/da” (“Data de Admissão” → data_admissao). */
+const chaveCabecalho = (c) => {
+  const k = semAcento(c).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').split('_').filter(p => !['de', 'do', 'da', 'dos', 'das'].includes(p)).join('_');
+  return SINONIMOS[k] || k;
+};
 
 /** Lê .xlsx/.csv no navegador. Em planilhas com várias abas, usa a aba “Colaboradores” ou “Dependentes”. */
 async function lerPlanilha(arquivo, tipo) {
