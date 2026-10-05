@@ -1,7 +1,7 @@
 /* Componentes próprios do Portal de Reembolsos (sobre o visual da Trilha DHO) */
 
 .etiqueta.nao { background: #fdecea; color: #b42d20; }
-.etiqueta.analise { background: var(--laranja-suave); color: #b54d12; }
+.etiqueta.analise { background: var(--status-fundo); color: var(--status-texto); }
 
 /* Faixa de situação do período (aberto / fechado) */
 .faixa-periodo { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .85rem 1.1rem; border-radius: 12px; font-size: .92rem; margin-bottom: 1.2rem; border: 1px solid var(--linha); background: #fff; }
@@ -27,7 +27,7 @@
   padding: .85rem 1rem; border-radius: 12px; border: 1px solid var(--linha); background: #fff; color: var(--texto);
   transition: border-color .15s, box-shadow .15s;
 }
-.sol-item:hover { border-color: rgba(236, 107, 36, .6); box-shadow: 0 6px 18px -12px rgba(14, 59, 92, .45); }
+.sol-item:hover { border-color: rgba(var(--destaque-rgb), .6); box-shadow: 0 6px 18px -12px rgba(14, 59, 92, .45); }
 .sol-item .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--fundo); font-size: 1.15rem; }
 .sol-item strong { color: var(--marinho); display: block; }
 .sol-item small { color: var(--texto-suave); font-size: .8rem; }
@@ -56,7 +56,7 @@
 .opcao-cartao .ic { width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; background: var(--fundo); font-size: 1.1rem; }
 .opcao-cartao strong { display: block; color: var(--marinho); font-size: .92rem; line-height: 1.25; }
 .opcao-cartao small { display: block; color: var(--texto-suave); font-size: .78rem; margin-top: .1rem; }
-.opcao-cartao input:checked + span { border-color: var(--laranja); background: var(--laranja-suave); box-shadow: 0 0 0 3px rgba(236, 107, 36, .15); }
+.opcao-cartao input:checked + span { border-color: var(--destaque); background: var(--destaque-suave); box-shadow: 0 0 0 3px rgba(var(--destaque-rgb), .15); }
 .opcao-cartao input:focus-visible + span { outline: 2px solid var(--marinho); outline-offset: 2px; }
 .opcao-cartao input:disabled + span { opacity: .55; cursor: not-allowed; }
 
@@ -70,7 +70,7 @@
   position: relative; display: grid; gap: .3rem; padding: 1rem; border-radius: 12px; border: 1.5px dashed var(--cinza-arte);
   background: var(--fundo); cursor: pointer; transition: border-color .15s, background .15s;
 }
-.anexo-campo:hover, .anexo-campo.arrastando { border-color: var(--laranja); background: var(--laranja-suave); }
+.anexo-campo:hover, .anexo-campo.arrastando { border-color: var(--destaque); background: var(--destaque-suave); }
 .anexo-campo.ok { border-style: solid; border-color: var(--verde); background: #eef9f2; }
 .anexo-campo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .anexo-campo strong { color: var(--marinho); font-size: .9rem; }
@@ -80,7 +80,7 @@
 .alerta { display: flex; gap: .7rem; align-items: flex-start; padding: .8rem 1rem; border-radius: 10px; font-size: .9rem; line-height: 1.45; margin: .8rem 0 0; }
 .alerta.info { background: #eaf2f8; color: var(--marinho); }
 .alerta.erro { background: #fdecea; color: #8a2419; font-weight: 600; }
-.alerta.aviso { background: var(--laranja-suave); color: #8f3f0e; }
+.alerta.aviso { background: var(--status-fundo); color: var(--status-texto); }
 .alerta.ok { background: #e3f5eb; color: #146b3a; font-weight: 600; }
 
 .dados-cad { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .6rem 1.2rem; margin: 0; }
@@ -114,12 +114,12 @@
 .det-corpo { padding: 1.3rem; max-height: calc(100vh - 200px); overflow-y: auto; display: grid; gap: 1.2rem; }
 .det-grade { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.2rem; align-items: start; }
 .det-bloco { display: grid; gap: .7rem; }
-.det-bloco h4 { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--laranja); }
+.det-bloco h4 { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--destaque); }
 .anexos-lista { display: grid; gap: .45rem; }
 .anexos-lista a { display: flex; align-items: center; gap: .6rem; padding: .55rem .75rem; border-radius: 10px; border: 1px solid var(--linha); text-decoration: none; font-size: .88rem; color: var(--marinho); font-weight: 600; background: #fff; }
-.anexos-lista a:hover { border-color: var(--laranja); }
+.anexos-lista a:hover { border-color: var(--destaque); }
 .anexos-lista a small { margin-left: auto; color: var(--texto-suave); font-weight: 400; }
-.decisao { display: grid; gap: .7rem; padding: 1rem; border-radius: 12px; background: var(--fundo); border-left: 4px solid var(--laranja); }
+.decisao { display: grid; gap: .7rem; padding: 1rem; border-radius: 12px; background: var(--fundo); border-left: 4px solid var(--destaque); }
 .decisao .linha-form { margin-top: 0; align-items: end; }
 .valor-grande { font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 800; color: var(--marinho); }
 .pre { white-space: pre-wrap; }
@@ -134,7 +134,7 @@
 
 /* Área do RH */
 .previa { margin-top: 1rem; font-size: .9rem; }
-.previa .aviso { color: #b54d12; }
+.previa .aviso { color: var(--status-texto); }
 .filtros-sol { margin-left: 0; }
 .filtros-sol .campo { max-width: 220px; }
 .filtros-sol #f-busca { flex: 1; min-width: 220px; max-width: none; }

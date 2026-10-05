@@ -1,4 +1,4 @@
-// Home pública: acesso por CPF e resumo dos benefícios e prazos.
+// Home pública: acesso por CPF, calendário de envio do mês e resumo dos benefícios.
 const form = document.getElementById('acesso');
 const campoCpf = document.getElementById('cpf');
 const msg = document.getElementById('acesso-msg');
@@ -31,31 +31,66 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
+const dois = (n) => String(n).padStart(2, '0');
+
+/** Calendário do mês atual com a janela de envio destacada e o dia de hoje marcado. */
+function desenharCalendario(hoje, p) {
+  const [ano, mes, dia] = hoje.split('-').map(Number);
+  const primeiroDiaSemana = new Date(Date.UTC(ano, mes - 1, 1)).getUTCDay();
+  const diasNoMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+  // Com abertura excepcional, a janela vai até a data informada pelo RH (se for neste mês).
+  let fim = p.dia_fim;
+  if (p.aberto && p.encerra_em && p.encerra_em.slice(0, 7) === hoje.slice(0, 7)) fim = Math.max(fim, Number(p.encerra_em.slice(8, 10)));
+  const mesAno = new Date(Date.UTC(ano, mes - 1, 1)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const nomeMes = mesAno.charAt(0).toUpperCase() + mesAno.slice(1); // "Outubro de 2026"
+  const celulas = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(s => `<span class="sem" aria-hidden="true">${s}</span>`);
+  for (let i = 0; i < primeiroDiaSemana; i++) celulas.push('<span></span>');
+  for (let d = 1; d <= diasNoMes; d++) {
+    const classes = ['dia'];
+    if (d >= p.dia_inicio && d <= fim) classes.push('janela');
+    if (d === p.dia_inicio) classes.push('inicio');
+    if (d === fim) classes.push('fim');
+    if (d < dia) classes.push('passado');
+    if (d === dia) classes.push('hoje');
+    celulas.push(`<span class="${classes.join(' ')}"${d === dia ? ' aria-current="date"' : ''}>${d}</span>`);
+  }
+  document.getElementById('cal-mes').innerHTML = `<h3>${nomeMes}</h3><div class="cal-grade">${celulas.join('')}</div>`;
+
+  const cal = document.getElementById('calendario');
+  cal.classList.toggle('fechado', !p.aberto);
+  document.getElementById('cal-status').textContent = p.aberto ? 'Envios abertos' : 'Envios fechados';
+  if (p.aberto) {
+    document.getElementById('cal-titulo').textContent = p.dias_restantes === 1 ? 'Último dia para enviar' : `Faltam ${p.dias_restantes} dias para enviar`;
+    document.getElementById('cal-sub').textContent = `Envie até ${dataBR(p.encerra_em)} · competência ${competenciaBR(p.competencia)}`;
+  } else {
+    document.getElementById('cal-titulo').textContent = `Reabre em ${dataBR(p.proxima_abertura)}`;
+    document.getElementById('cal-sub').textContent = `Envios do dia ${dois(p.dia_inicio)} ao dia ${dois(p.dia_fim)} de cada mês. Consultas liberadas.`;
+  }
+}
+
 (async function carregarInfo() {
   try {
     const r = await api('/api/publico/info');
     const p = r.periodo;
-    const dois = (n) => String(n).padStart(2, '0');
     document.querySelectorAll('[data-dia-inicio]').forEach(el => { el.textContent = dois(p.dia_inicio); });
     document.querySelectorAll('[data-dia-fim]').forEach(el => { el.textContent = dois(p.dia_fim); });
     document.querySelectorAll('[data-prazo]').forEach(el => { el.textContent = r.prazo_documento_dias; });
-    document.getElementById('acesso-periodo').textContent = p.aberto
-      ? `Solicitações abertas até ${dataBR(p.encerra_em)}`
-      : `Solicitações fechadas · próxima abertura em ${dataBR(p.proxima_abertura)}`;
-    document.getElementById('grade-beneficios').innerHTML = r.beneficios.map(b => {
+    desenharCalendario(r.hoje, p);
+    document.getElementById('lista-beneficios').innerHTML = r.beneficios.map(b => {
       const valor = b.escopo === 'dependente_mes'
-        ? `${reais(b.limite_nao_sucedido)} a ${reais(b.limite_sucedido)}<small>por dependente, por mês (conforme o perfil)</small>`
-        : b.escopo === 'familia_mes'
-          ? `até ${reais(b.limite)}<small>por mês, para todo o grupo familiar</small>`
-          : `até ${reais(b.limite)}<small>por beneficiário, a cada ${b.periodo_meses} meses</small>`;
+        ? `até ${reais(b.limite_sucedido)}` : `até ${reais(b.limite)}`;
+      const regra = b.escopo === 'dependente_mes'
+        ? `por dependente/mês (${reais(b.limite_nao_sucedido)} para não sucedidos)`
+        : b.escopo === 'familia_mes' ? 'por mês, para o grupo familiar' : `por pessoa, a cada ${b.periodo_meses} meses`;
       return `
-        <article class="beneficio-card">
-          <span class="pilar-ic">${b.icone}</span>
-          <h3>${esc(b.nome)}</h3>
-          <div class="valor">${valor}</div>
-          <p>${esc(b.elegiveis)}</p>
-          <p class="docs">📎 ${esc(b.documentos.join(' + '))}</p>
+        <article class="beneficio">
+          <span class="ic" aria-hidden="true">${b.icone}</span>
+          <h3>${esc(b.nome.replace('Reembolso ', ''))}</h3>
+          <span class="valor">${valor}</span>
+          <small>${esc(regra)}</small>
         </article>`;
     }).join('');
-  } catch { /* mantém os textos padrão */ }
+  } catch {
+    document.getElementById('cal-titulo').textContent = 'Envios do dia 01 ao dia 10 de cada mês';
+  }
 })();

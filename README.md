@@ -4,8 +4,10 @@ Portal para recebimento, análise, aprovação e controle das solicitações de 
 (**medicamento, educacional, creche/babá e óculos**), conforme o *Documento de Requisitos – Portal de Reembolso*.
 Substitui o envio de documentos por e-mail, mantém o histórico rastreável e gera a base mensal para a folha de pagamento.
 
-Mesma arquitetura e identidade visual da plataforma de treinamento (Trilha DHO, repositório `DHO-mbar`):
-Node.js + SQLite nativo, HTML/CSS/JS puro, lateral azul-marinho, home com a foto da equipe e cores da marca.
+Mesma arquitetura da plataforma de treinamento (Trilha DHO, repositório `DHO-mbar`): Node.js + SQLite nativo e
+HTML/CSS/JS puro. O visual segue a marca Âmbar (azul-marinho, fontes e logotipo), mas com **identidade própria** para não
+confundir com a Trilha: home clara focada na ação (CPF, calendário de envio do mês e benefícios), cor de destaque
+verde-azulado (`--destaque` em `public/css/base.css`), o nome “Reembolsos” ao lado do logotipo e ícone “R” na aba do navegador.
 É um serviço **independente** (banco, senhas e publicação próprios).
 
 ## Ver o portal antes de publicar (GitHub Codespaces)

@@ -6,6 +6,17 @@
   --laranja: #ec6b24;
   --laranja-claro: #f39a4a;
   --laranja-suave: #fdf0e7;
+  /* Cor própria do Portal de Reembolsos (verde-azulado), para não confundir com a Trilha DHO.
+     O laranja da marca continua no logotipo e nas ondas decorativas. */
+  --destaque: #0b7a75;
+  --destaque-escuro: #08615d;
+  --destaque-claro: #4cc3b8;
+  --destaque-suave: #e2f3f1;
+  --destaque-rgb: 11, 122, 117;
+  --destaque-claro-rgb: 76, 195, 184;
+  /* Status "em análise" e avisos (âmbar) */
+  --status-fundo: #fff4e0;
+  --status-texto: #8a5300;
   --fundo: #f4f6f8;
   --fundo-2: #eaeef2;
   --branco: #ffffff;
@@ -43,8 +54,8 @@ input, select, textarea { font: inherit; }
 }
 .btn:hover { transform: translateY(-1px); }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-.btn-laranja { background: var(--laranja); color: #fff; box-shadow: 0 10px 22px -12px rgba(236, 107, 36, .9); }
-.btn-laranja:hover { background: #d95d18; }
+.btn-laranja { background: var(--destaque); color: #fff; box-shadow: 0 10px 22px -12px rgba(var(--destaque-rgb), .9); }
+.btn-laranja:hover { background: var(--destaque-escuro); }
 .btn-marinho { background: var(--marinho); color: #fff; }
 .btn-marinho:hover { background: var(--marinho-2); }
 .btn-claro { background: #fff; color: var(--marinho); border: 1px solid var(--linha); }
@@ -65,7 +76,7 @@ input, select, textarea { font: inherit; }
   background-image: radial-gradient(rgba(14, 59, 92, .22) 1.2px, transparent 1.3px); background-size: 14px 14px;
   -webkit-mask-image: linear-gradient(225deg, #000 20%, transparent 75%); mask-image: linear-gradient(225deg, #000 20%, transparent 75%);
 }
-.contorno { position: absolute; pointer-events: none; border: 1px solid rgba(236, 107, 36, .35); }
+.contorno { position: absolute; pointer-events: none; border: 1px solid rgba(var(--destaque-rgb), .35); }
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0;
@@ -74,3 +85,11 @@ input, select, textarea { font: inherit; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.erro { background: var(--vermelho); }
+
+/* Logotipo + nome do produto ("Âmbar ENERGIA │ Reembolsos") */
+.logo-produto { display: inline-flex; align-items: center; gap: .8rem; text-decoration: none; }
+.logo-produto .produto {
+  font-family: var(--fonte-titulo); font-weight: 700; font-size: 1.05rem; color: var(--destaque);
+  padding-left: .8rem; border-left: 1px solid var(--linha); line-height: 1.9;
+}
+.logo-produto.claro .produto { color: var(--destaque-claro); border-left-color: rgba(255, 255, 255, .22); }

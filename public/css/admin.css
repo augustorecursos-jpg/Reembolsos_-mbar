@@ -14,7 +14,7 @@
 .importar input[type=file] { max-width: 340px; }
 .check { display: flex; gap: .4rem; align-items: center; font-size: .88rem; }
 #previa { margin-top: 1rem; font-size: .9rem; }
-#previa .aviso { color: #b54d12; }
+#previa .aviso { color: var(--status-texto); }
 
 .cab-tabela { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .busca { max-width: 320px; margin-left: auto; }
@@ -69,3 +69,4 @@
   .barras-eixo { margin-left: calc(34% + .8rem); }
   .filtros, .filtros .campo { width: 100%; }
 }
+.login-cartao .login-marca { margin: 0 auto .4rem; }
