@@ -34,51 +34,72 @@
   </header>
 
   <main>
-    <section class="banner" id="inicio">
+    <!-- Arte do portal e acesso lado a lado (no celular: arte em cima, acesso logo abaixo) -->
+    <section class="hero" id="inicio">
       <h1 class="sr">Portal de Reembolsos: mais praticidade, agilidade e autonomia para você</h1>
-      <picture>
-        <source type="image/webp" srcset="img/banner-reembolsos-960.webp 960w, img/banner-reembolsos.webp 1672w" sizes="100vw">
-        <img src="img/banner-reembolsos.webp" width="1672" height="941" fetchpriority="high"
-             alt="Portal de Reembolsos — mais praticidade, agilidade e autonomia para você. Colaboradora sorridente enviando uma solicitação pelo notebook.">
-      </picture>
-    </section>
+      <figure class="hero-arte">
+        <picture>
+          <source type="image/webp" srcset="img/banner-reembolsos-960.webp 960w, img/banner-reembolsos.webp 1672w"
+                  sizes="(max-width: 900px) 100vw, 60vw">
+          <img src="img/banner-reembolsos.webp" width="1672" height="941" fetchpriority="high"
+               alt="Portal de Reembolsos — mais praticidade, agilidade e autonomia para você. Colaboradora sorridente enviando uma solicitação pelo notebook.">
+        </picture>
+      </figure>
 
-    <section class="hero">
-      <div class="hero-texto">
-        <h2>Acesse o portal</h2>
-        <p>Envie a solicitação com os comprovantes, acompanhe o saldo de cada benefício e veja o resultado da análise do RH.</p>
-
-        <div class="alerta erro" id="aviso-suspenso" hidden></div>
-        <form class="acesso" id="acesso" novalidate>
-          <label for="cpf">Entre com o seu CPF</label>
-          <div class="acesso-linha">
-            <input id="cpf" name="cpf" class="campo" inputmode="numeric" autocomplete="off"
-                   placeholder="000.000.000-00" maxlength="14" aria-describedby="acesso-msg">
-            <button class="btn btn-laranja" type="submit">Acessar →</button>
-          </div>
-          <p class="acesso-msg" id="acesso-msg" role="alert" aria-live="assertive"></p>
-          <small>Acesso liberado para colaboradores da base de elegibilidade do RH.</small>
-        </form>
-      </div>
-
-      <aside class="calendario" id="calendario" aria-label="Calendário de envio do mês">
-        <div class="cal-topo">
-          <span class="cal-status" id="cal-status">…</span>
-          <strong id="cal-titulo">Carregando o calendário…</strong>
-          <small id="cal-sub"></small>
+      <div class="hero-lado">
+        <div class="hero-texto">
+          <h2>Acesse o portal</h2>
+          <p>Envie a solicitação com os comprovantes, acompanhe o saldo de cada benefício e veja o resultado da análise do RH.</p>
+          <div class="alerta erro" id="aviso-suspenso" hidden></div>
+          <form class="acesso" id="acesso" novalidate>
+            <label for="cpf">Entre com o seu CPF</label>
+            <div class="acesso-linha">
+              <input id="cpf" name="cpf" class="campo" inputmode="numeric" autocomplete="off"
+                     placeholder="000.000.000-00" maxlength="14" aria-describedby="acesso-msg">
+              <button class="btn btn-laranja" type="submit">Acessar →</button>
+            </div>
+            <p class="acesso-msg" id="acesso-msg" role="alert" aria-live="assertive"></p>
+            <small>Acesso liberado para colaboradores da base de elegibilidade do RH.</small>
+          </form>
         </div>
-        <div class="cal-mes" id="cal-mes"></div>
-        <ul class="cal-legenda">
-          <li><i class="janela"></i>Período de envio</li>
-          <li><i class="hoje"></i>Hoje</li>
-        </ul>
-        <p class="cal-rodape">Documentos com até <strong data-prazo>60</strong> dias da emissão · aprovados vão para a folha do mês</p>
-      </aside>
+
+        <a class="prazo-resumo" id="prazo-resumo" href="#calendario-mes">
+          <span class="cal-status" id="res-status">…</span>
+          <span class="prazo-txt"><strong id="res-titulo">Carregando o calendário…</strong><small id="res-sub"></small></span>
+          <span class="prazo-ver">Ver calendário ↓</span>
+        </a>
+      </div>
     </section>
 
     <section class="faixa-beneficios" id="beneficios" aria-label="Benefícios">
       <div class="beneficios" id="lista-beneficios">
         <p class="vazio">Carregando os benefícios…</p>
+      </div>
+    </section>
+
+    <section class="secao secao-calendario" id="calendario-mes">
+      <div class="secao-cab">
+        <span class="sobretitulo">PRAZOS</span>
+        <h2>Calendário do mês</h2>
+      </div>
+      <div class="cal-grade-secao">
+        <aside class="calendario" id="calendario" aria-label="Calendário de envio do mês">
+          <div class="cal-topo">
+            <span class="cal-status" id="cal-status">…</span>
+            <strong id="cal-titulo">Carregando o calendário…</strong>
+            <small id="cal-sub"></small>
+          </div>
+          <div class="cal-mes" id="cal-mes"></div>
+          <ul class="cal-legenda">
+            <li><i class="janela"></i>Período de envio</li>
+            <li><i class="hoje"></i>Hoje</li>
+          </ul>
+        </aside>
+        <ul class="prazos-lista">
+          <li><b>📅</b><div><strong>Do dia <span data-dia-inicio>01</span> ao dia <span data-dia-fim>10</span></strong><p>Período para enviar novas solicitações. Fora dele, o portal fica disponível para consulta.</p></div></li>
+          <li><b>🧾</b><div><strong>Documentos com até <span data-prazo>60</span> dias</strong><p>Contados da data de emissão da nota fiscal ou do comprovante de pagamento.</p></div></li>
+          <li><b>💰</b><div><strong>Pagamento na folha</strong><p>Depois do fechamento, as solicitações aprovadas seguem para a folha de pagamento do mês.</p></div></li>
+        </ul>
       </div>
     </section>
 

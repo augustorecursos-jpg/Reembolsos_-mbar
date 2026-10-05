@@ -56,15 +56,22 @@ function desenharCalendario(hoje, p) {
   }
   document.getElementById('cal-mes').innerHTML = `<h3>${nomeMes}</h3><div class="cal-grade">${celulas.join('')}</div>`;
 
-  const cal = document.getElementById('calendario');
-  cal.classList.toggle('fechado', !p.aberto);
-  document.getElementById('cal-status').textContent = p.aberto ? 'Envios abertos' : 'Envios fechados';
+  // Mesmo texto no calendário completo e no resumo ao lado do login.
+  let status, titulo, sub;
   if (p.aberto) {
-    document.getElementById('cal-titulo').textContent = p.dias_restantes === 1 ? 'Último dia para enviar' : `Faltam ${p.dias_restantes} dias para enviar`;
-    document.getElementById('cal-sub').textContent = `Envie até ${dataBR(p.encerra_em)} · competência ${competenciaBR(p.competencia)}`;
+    status = 'Envios abertos';
+    titulo = p.dias_restantes === 1 ? 'Último dia para enviar' : `Faltam ${p.dias_restantes} dias para enviar`;
+    sub = `Envie até ${dataBR(p.encerra_em)} · competência ${competenciaBR(p.competencia)}`;
   } else {
-    document.getElementById('cal-titulo').textContent = `Reabre em ${dataBR(p.proxima_abertura)}`;
-    document.getElementById('cal-sub').textContent = `Envios do dia ${dois(p.dia_inicio)} ao dia ${dois(p.dia_fim)} de cada mês. Consultas liberadas.`;
+    status = 'Envios fechados';
+    titulo = `Reabre em ${dataBR(p.proxima_abertura)}`;
+    sub = `Envios do dia ${dois(p.dia_inicio)} ao dia ${dois(p.dia_fim)} de cada mês. Consultas liberadas.`;
+  }
+  for (const [prefixo, el] of [['cal', document.getElementById('calendario')], ['res', document.getElementById('prazo-resumo')]]) {
+    el.classList.toggle('fechado', !p.aberto);
+    document.getElementById(`${prefixo}-status`).textContent = status;
+    document.getElementById(`${prefixo}-titulo`).textContent = titulo;
+    document.getElementById(`${prefixo}-sub`).textContent = sub;
   }
 }
 
@@ -99,5 +106,6 @@ function desenharCalendario(hoje, p) {
     }).join('');
   } catch {
     document.getElementById('cal-titulo').textContent = 'Envios do dia 01 ao dia 10 de cada mês';
+    document.getElementById('res-titulo').textContent = 'Envios do dia 01 ao dia 10 de cada mês';
   }
 })();
