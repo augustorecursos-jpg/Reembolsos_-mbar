@@ -34,34 +34,41 @@
   </header>
 
   <main>
-    <!-- Arte do portal e acesso lado a lado (no celular: arte em cima, acesso logo abaixo) -->
+    <!-- Hero no padrão da home da Trilha DHO: fundo marinho, foto à direita e acesso à esquerda -->
     <section class="hero" id="inicio">
-      <h1 class="sr">Portal de Reembolsos: mais praticidade, agilidade e autonomia para você</h1>
-      <figure class="hero-arte">
+      <figure class="hero-foto">
         <picture>
-          <source type="image/webp" srcset="img/banner-reembolsos-960.webp 960w, img/banner-reembolsos.webp 1672w"
-                  sizes="(max-width: 900px) 100vw, 60vw">
-          <img src="img/banner-reembolsos.webp" width="1672" height="941" fetchpriority="high"
-               alt="Portal de Reembolsos — mais praticidade, agilidade e autonomia para você. Colaboradora sorridente enviando uma solicitação pelo notebook.">
+          <source type="image/webp" srcset="img/hero-reembolsos-620.webp 620w, img/hero-reembolsos.webp 932w" sizes="(max-width: 1100px) 100vw, 60vw">
+          <img src="img/hero-reembolsos.webp" width="932" height="941" fetchpriority="high"
+               alt="Colaboradora sorridente enviando uma solicitação de reembolso pelo notebook">
         </picture>
       </figure>
 
-      <div class="hero-lado">
-        <div class="hero-texto">
-          <h2>Acesse o portal</h2>
-          <p>Envie a solicitação com os comprovantes, acompanhe o saldo de cada benefício e veja o resultado da análise do RH.</p>
-          <div class="alerta erro" id="aviso-suspenso" hidden></div>
-          <form class="acesso" id="acesso" novalidate>
-            <label for="cpf">Entre com o seu CPF</label>
-            <div class="acesso-linha">
-              <input id="cpf" name="cpf" class="campo" inputmode="numeric" autocomplete="off"
-                     placeholder="000.000.000-00" maxlength="14" aria-describedby="acesso-msg">
-              <button class="btn btn-laranja" type="submit">Acessar →</button>
-            </div>
-            <p class="acesso-msg" id="acesso-msg" role="alert" aria-live="assertive"></p>
-            <small>Acesso liberado para colaboradores da base de elegibilidade do RH.</small>
-          </form>
+      <div class="hero-texto">
+        <span class="sobretitulo">PORTAL DE REEMBOLSOS · RH</span>
+        <h1>Portal de <em>Reembolsos</em></h1>
+        <div class="hero-jornada">
+          <h2>Mais praticidade, agilidade e autonomia para você</h2>
+          <p>Envie suas solicitações de <strong>medicamento, educacional, creche/babá e óculos</strong> com os comprovantes,
+            acompanhe o saldo de cada benefício e veja o resultado da análise do RH — sem e-mail e sem papel.</p>
         </div>
+
+        <div class="alerta erro" id="aviso-suspenso" hidden></div>
+        <form class="cartao-acesso" id="acesso" novalidate>
+          <div class="cartao-acesso-topo">
+            <svg viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60C120 40 250 0 400 8V0H0Z" fill="#164d74"/><path d="M0 52C130 34 260 2 400 10" fill="none" stroke="#4cc3b8" stroke-width="2"/></svg>
+            <h2>Acesse o portal</h2>
+            <p>Informe seu CPF para continuar</p>
+          </div>
+          <div class="cartao-acesso-corpo">
+            <label for="cpf">CPF</label>
+            <input id="cpf" name="cpf" class="campo" inputmode="numeric" autocomplete="off"
+                   placeholder="000.000.000-00" maxlength="14" aria-describedby="acesso-msg">
+            <button class="btn btn-laranja" type="submit">Acessar →</button>
+            <p class="acesso-msg" id="acesso-msg" role="alert" aria-live="assertive"></p>
+            <small>O acesso é liberado para colaboradores da base de elegibilidade do RH.</small>
+          </div>
+        </form>
 
         <a class="prazo-resumo" id="prazo-resumo" href="#calendario-mes">
           <span class="cal-status" id="res-status">…</span>
