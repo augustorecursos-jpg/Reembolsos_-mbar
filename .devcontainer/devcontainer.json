@@ -1,0 +1,13 @@
+// Ambiente de teste no GitHub Codespaces (Code → Codespaces → Create codespace on main).
+// Instala as dependências, cria os dados de demonstração e inicia o portal na porta 3001,
+// abrindo-o automaticamente no navegador.
+{
+  "name": "Portal de Reembolsos",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm install && npm run seed",
+  "postAttachCommand": "npm start",
+  "forwardPorts": [3001],
+  "portsAttributes": {
+    "3001": { "label": "Portal de Reembolsos", "onAutoForward": "openBrowser" }
+  }
+}

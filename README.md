@@ -8,7 +8,18 @@ Mesma arquitetura e identidade visual da plataforma de treinamento (Trilha DHO, 
 Node.js + SQLite nativo, HTML/CSS/JS puro, lateral azul-marinho, home com a foto da equipe e cores da marca.
 É um serviço **independente** (banco, senhas e publicação próprios).
 
-## Como rodar
+## Ver o portal antes de publicar (GitHub Codespaces)
+
+Sem instalar nada no computador:
+
+1. No GitHub, abra este repositório → botão verde **Code** → aba **Codespaces** → **Create codespace on main**.
+2. Aguarde 1 a 3 minutos: o ambiente instala tudo, cria os dados de demonstração e inicia o portal.
+3. O portal abre sozinho em uma nova aba (se não abrir: aba **PORTS** na parte de baixo → porta **3001** → ícone do globo).
+4. Use os acessos de demonstração abaixo. Ao terminar, pare o codespace em github.com/codespaces (contas pessoais têm horas gratuitas por mês).
+
+O link do codespace é privado (só funciona logado na sua conta do GitHub). Os dados são apenas de teste.
+
+## Como rodar (no próprio computador)
 
 Requisito: **Node.js 22.5+**.
 
