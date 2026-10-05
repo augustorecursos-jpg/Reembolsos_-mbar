@@ -63,7 +63,7 @@ Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
    Decisões podem ser reabertas com motivo. Tudo fica na linha do tempo com data, hora e responsável.
 5. **Colaborador acompanha** o status (Em análise / Aprovado / Reprovado) e recebe e-mail no envio e na decisão (se SMTP configurado).
 6. **Dia 11 – Folha de pagamento**: o RH extrai as aprovadas da competência em **CSV** (`;`, vírgula decimal, pronto para o
-   Excel/importação) ou **Excel**, com matrícula, nome, CPF, empresa/CNPJ, unidade, benefício, beneficiário, competência,
+   Excel/importação) ou **Excel**, com matrícula, nome, CPF, empresa, unidade, benefício, beneficiário, competência,
    valor aprovado, verba de folha, data da aprovação e status. O sistema avisa se ainda houver solicitações em análise.
 
 ## Regras implementadas

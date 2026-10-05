@@ -316,7 +316,7 @@ function renderNova(codigoInicial, beneficiarioInicial) {
           <div><dt>Colaborador</dt><dd>${esc(c.nome)}</dd></div>
           <div><dt>Matrícula</dt><dd>${esc(c.matricula)}</dd></div>
           <div><dt>CPF</dt><dd>${formatarCpf(c.cpf)}</dd></div>
-          <div><dt>Empresa</dt><dd>${esc(c.empresa || '–')}${c.cnpj ? ` <small style="font-weight:400">· ${esc(c.cnpj)}</small>` : ''}</dd></div>
+          <div><dt>Empresa</dt><dd>${esc(c.empresa || '–')}</dd></div>
           <div><dt>Unidade / lotação</dt><dd>${esc(c.unidade || '–')}</dd></div>
           <div><dt>Competência</dt><dd>${competenciaBR(p.competencia)}</dd></div>
         </dl>

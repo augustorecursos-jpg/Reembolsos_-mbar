@@ -34,9 +34,9 @@ function pdfDemo(texto) {
 }
 
 const colaboradores = [
-  { cpf: '12345678909', matricula: '1001', nome: 'Maria Souza', email: 'maria.souza@exemplo.com.br', empresa: 'Âmbar Energia', cnpj: '00.000.000/0001-00', unidade: 'Cuiabá', data_admissao: '2008-03-15', sucedido: 1 },
-  { cpf: '98765432100', matricula: '2002', nome: 'João Pereira', email: 'joao.pereira@exemplo.com.br', empresa: 'Fluxus', cnpj: '00.000.000/0002-00', unidade: 'Campo Grande', data_admissao: '2025-02-03', sucedido: 0 },
-  { cpf: '11144477735', matricula: '3003', nome: 'Ana Lima', email: 'ana.lima@exemplo.com.br', empresa: 'MGAS', cnpj: '00.000.000/0003-00', unidade: 'São Paulo', data_admissao: '2025-06-01', sucedido: 0 },
+  { cpf: '12345678909', matricula: '1001', nome: 'Maria Souza', email: 'maria.souza@exemplo.com.br', empresa: 'Âmbar Energia', unidade: 'Cuiabá', data_admissao: '2008-03-15', sucedido: 1 },
+  { cpf: '98765432100', matricula: '2002', nome: 'João Pereira', email: 'joao.pereira@exemplo.com.br', empresa: 'Fluxus', unidade: 'Campo Grande', data_admissao: '2025-02-03', sucedido: 0 },
+  { cpf: '11144477735', matricula: '3003', nome: 'Ana Lima', email: 'ana.lima@exemplo.com.br', empresa: 'MGAS', unidade: 'São Paulo', data_admissao: '2025-06-01', sucedido: 0 },
 ];
 const dependentes = [
   { titular: '12345678909', nome: 'Carlos Souza', parentesco: 'conjuge', nascimento: '1980-07-10' },
@@ -50,9 +50,9 @@ const dependentes = [
 ];
 
 const insColab = db.prepare(`
-  INSERT OR REPLACE INTO colaboradores (cpf, matricula, nome, email, empresa, cnpj, unidade, data_admissao, sucedido, elegibilidade, ativo)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', 1)`);
-for (const c of colaboradores) insColab.run(c.cpf, c.matricula, c.nome, c.email, c.empresa, c.cnpj, c.unidade, c.data_admissao, c.sucedido);
+  INSERT OR REPLACE INTO colaboradores (cpf, matricula, nome, email, empresa, unidade, data_admissao, sucedido, elegibilidade, ativo)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', 1)`);
+for (const c of colaboradores) insColab.run(c.cpf, c.matricula, c.nome, c.email, c.empresa, c.unidade, c.data_admissao, c.sucedido);
 
 const insDep = db.prepare(`
   INSERT INTO dependentes (cpf_titular, chave, nome, parentesco, data_nascimento, elegibilidade, ativo) VALUES (?, ?, ?, ?, ?, '{}', 1)
@@ -71,9 +71,9 @@ if (!db.prepare('SELECT 1 FROM solicitacoes LIMIT 1').get()) {
       obs: 'Nota fiscal ilegível e sem a identificação dos medicamentos. Envie uma nova solicitação com a nota completa.' },
   ];
   const ins = db.prepare(`
-    INSERT INTO solicitacoes (cpf, matricula, nome, empresa, cnpj, unidade, sucedido, beneficio, dependente_id, beneficiario_nome, beneficiario_tipo,
+    INSERT INTO solicitacoes (cpf, matricula, nome, empresa, unidade, sucedido, beneficio, dependente_id, beneficiario_nome, beneficiario_tipo,
       competencia, data_documento, valor_solicitado, valor_aprovado, detalhes, status, observacao_rh, criado_em, analisado_em, analisado_por)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const insAnexo = db.prepare('INSERT INTO anexos (solicitacao_id, tipo, arquivo, nome_original, mime, tamanho) VALUES (?, ?, ?, ?, ?, ?)');
   const insEvento = db.prepare('INSERT INTO eventos (solicitacao_id, evento, detalhe, por, em) VALUES (?, ?, ?, ?, ?)');
   for (const e of exemplos) {
@@ -81,7 +81,7 @@ if (!db.prepare('SELECT 1 FROM solicitacoes LIMIT 1').get()) {
     const d = e.dep ? dependentes.find(x => x.titular === e.cpf && x.nome === e.dep) : null;
     const enviada = `${e.comp === competencia ? hoje.slice(0, 8) + '02' : e.comp + '-05'} 13:00:00`;
     const analisada = e.status === 'analise' ? null : `${enviada.slice(0, 10)} 17:30:00`;
-    const id = Number(ins.run(c.cpf, c.matricula, c.nome, c.empresa, c.cnpj, c.unidade, c.sucedido, e.beneficio, d ? depId(e.cpf, d.nome) : null,
+    const id = Number(ins.run(c.cpf, c.matricula, c.nome, c.empresa, c.unidade, c.sucedido, e.beneficio, d ? depId(e.cpf, d.nome) : null,
       d ? d.nome : c.nome, d ? d.parentesco : 'titular', e.comp, e.data, e.valor, e.aprovado ?? null,
       JSON.stringify(e.beneficio === 'educacional' ? { nivel_ensino: 'Ensino fundamental' } : {}), e.status, e.obs ?? null,
       enviada, analisada, analisada ? 'Administrador' : null).lastInsertRowid);

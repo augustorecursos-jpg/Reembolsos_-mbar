@@ -155,7 +155,7 @@ document.getElementById('tabela-sol').addEventListener('click', (e) => {
 document.getElementById('exportar-sol').addEventListener('click', () => {
   const linhas = adm.solicitacoes.map(s => ({
     Protocolo: s.protocolo, 'Enviada em': dataHoraBR(s.criado_em), Matrícula: s.matricula, Colaborador: s.nome, CPF: formatarCpf(s.cpf),
-    Empresa: s.empresa, CNPJ: s.cnpj, Unidade: s.unidade, Benefício: s.beneficio_nome, Beneficiário: s.beneficiario_nome, Vínculo: s.beneficiario_rotulo,
+    Empresa: s.empresa, Unidade: s.unidade, Benefício: s.beneficio_nome, Beneficiário: s.beneficiario_nome, Vínculo: s.beneficiario_rotulo,
     Competência: competenciaBR(s.competencia), 'Data do documento': dataBR(s.data_documento),
     'Valor solicitado': s.valor_solicitado / 100, 'Valor aprovado': s.valor_aprovado == null ? '' : s.valor_aprovado / 100,
     Status: STATUS[s.status]?.nome || s.status, 'Observação do RH': s.observacao_rh || '', 'Analisado por': s.analisado_por || '', 'Analisado em': dataHoraBR(s.analisado_em),
@@ -193,7 +193,7 @@ async function abrirAnalise(id) {
           <div><dt>Nome</dt><dd>${esc(s.nome)}</dd></div>
           <div><dt>Matrícula</dt><dd>${esc(s.matricula)}</dd></div>
           <div><dt>CPF</dt><dd>${formatarCpf(s.cpf)}</dd></div>
-          <div><dt>Empresa</dt><dd>${esc(s.empresa || '–')}${s.cnpj ? `<br><small style="font-weight:400">${esc(s.cnpj)}</small>` : ''}</dd></div>
+          <div><dt>Empresa</dt><dd>${esc(s.empresa || '–')}</dd></div>
           <div><dt>Unidade</dt><dd>${esc(s.unidade || '–')}</dd></div>
           <div><dt>Perfil</dt><dd>${s.sucedido ? 'Sucedido' : 'Não sucedido'}</dd></div>
         </dl>
@@ -316,7 +316,7 @@ document.getElementById('folha-xlsx').addEventListener('click', () => {
   const d = adm.folha;
   if (!d) return;
   baixarExcel(d.linhas.map(l => ({
-    'Matrícula': l.matricula, 'Nome do colaborador': l.nome, CPF: l.cpf, Empresa: l.empresa, CNPJ: l.cnpj, 'Unidade/lotação': l.unidade,
+    'Matrícula': l.matricula, 'Nome do colaborador': l.nome, CPF: l.cpf, Empresa: l.empresa, 'Unidade/lotação': l.unidade,
     Benefício: l.beneficio, Beneficiário: l.beneficiario, Parentesco: l.parentesco, Competência: competenciaBR(l.competencia),
     'Valor aprovado': l.valor_aprovado / 100, 'Verba de folha': l.verba, 'Data da aprovação': dataBR(l.data_aprovacao),
     'Aprovado por': l.aprovado_por, Protocolo: l.protocolo, Status: l.status,
@@ -326,7 +326,7 @@ document.getElementById('folha-xlsx').addEventListener('click', () => {
 // ---------- Base de elegibilidade ----------
 const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 const CAMPOS = {
-  colab: ['cpf', 'matricula', 'nome', 'email', 'empresa', 'cnpj', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos'],
+  colab: ['cpf', 'matricula', 'nome', 'email', 'empresa', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos'],
   dep: ['cpf_titular', 'nome', 'cpf', 'parentesco', 'data_nascimento', 'medicamento', 'educacional', 'creche', 'oculos'],
 };
 // Nomes alternativos aceitos no cabeçalho da planilha.

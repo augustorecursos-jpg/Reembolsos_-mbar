@@ -293,7 +293,7 @@ app.get('/api/me', exigirColaborador, (req, res) => {
   res.json({
     hoje,
     colaborador: {
-      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, empresa: c.empresa, cnpj: c.cnpj, unidade: c.unidade,
+      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, empresa: c.empresa, unidade: c.unidade,
       sucedido: R.ehSucedido(c), data_desligamento: c.data_desligamento,
     },
     periodo: R.situacaoPeriodo(config, hoje),
@@ -387,10 +387,10 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
   db.exec('BEGIN IMMEDIATE');
   try {
     id = Number(db.prepare(`
-      INSERT INTO solicitacoes (cpf, matricula, nome, empresa, cnpj, unidade, sucedido, beneficio, dependente_id,
+      INSERT INTO solicitacoes (cpf, matricula, nome, empresa, unidade, sucedido, beneficio, dependente_id,
         beneficiario_nome, beneficiario_tipo, competencia, data_documento, valor_solicitado, detalhes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-      colab.cpf, colab.matricula, colab.nome, colab.empresa, colab.cnpj, colab.unidade, R.ehSucedido(colab) ? 1 : 0,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      colab.cpf, colab.matricula, colab.nome, colab.empresa, colab.unidade, R.ehSucedido(colab) ? 1 : 0,
       beneficio, dep ? dep.id : null, dep ? dep.nome : colab.nome, dep ? dep.parentesco : 'titular',
       competencia, dataDoc, valor, JSON.stringify(detalhes)).lastInsertRowid);
     const protocolo = `RB${competencia.replace('-', '')}-${String(id).padStart(5, '0')}`;
@@ -617,7 +617,7 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
       return [cod, nomes];
     }));
     return {
-      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, empresa: c.empresa, cnpj: c.cnpj, unidade: c.unidade,
+      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, empresa: c.empresa, unidade: c.unidade,
       data_admissao: c.data_admissao, sucedido: R.ehSucedido(c), data_desligamento: c.data_desligamento, ativo: c.ativo,
       ultimo_acesso: c.ultimo_acesso,
       dependentes: ds.map(d => ({ nome: d.nome, parentesco: R.PARENTESCOS[d.parentesco] || d.parentesco, data_nascimento: d.data_nascimento })),
@@ -652,7 +652,6 @@ app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
       cpf, matricula, nome,
       email: String(l.email || '').trim().toLowerCase(),
       empresa: String(l.empresa || '').trim(),
-      cnpj: String(l.cnpj || '').trim(),
       unidade: String(l.unidade || '').trim(),
       data_admissao: R.normalizarData(l.data_admissao),
       sucedido: suc === 'S' ? 1 : suc === 'N' ? 0 : null,
@@ -661,15 +660,15 @@ app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
     });
   });
   const upsert = db.prepare(`
-    INSERT INTO colaboradores (cpf, matricula, nome, email, empresa, cnpj, unidade, data_admissao, sucedido, data_desligamento, elegibilidade, ativo)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    INSERT INTO colaboradores (cpf, matricula, nome, email, empresa, unidade, data_admissao, sucedido, data_desligamento, elegibilidade, ativo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     ON CONFLICT(cpf) DO UPDATE SET matricula = excluded.matricula, nome = excluded.nome, email = excluded.email, empresa = excluded.empresa,
-      cnpj = excluded.cnpj, unidade = excluded.unidade, data_admissao = excluded.data_admissao, sucedido = excluded.sucedido,
+      unidade = excluded.unidade, data_admissao = excluded.data_admissao, sucedido = excluded.sucedido,
       data_desligamento = excluded.data_desligamento, elegibilidade = excluded.elegibilidade, ativo = 1, atualizado_em = datetime('now')`);
   db.exec('BEGIN');
   try {
     if (substituir) db.exec("UPDATE colaboradores SET ativo = 0, atualizado_em = datetime('now')");
-    for (const c of validos) upsert.run(c.cpf, c.matricula, c.nome, c.email, c.empresa, c.cnpj, c.unidade, c.data_admissao, c.sucedido, c.data_desligamento, c.elegibilidade);
+    for (const c of validos) upsert.run(c.cpf, c.matricula, c.nome, c.email, c.empresa, c.unidade, c.data_admissao, c.sucedido, c.data_desligamento, c.elegibilidade);
     db.prepare('INSERT INTO importacoes (tipo, modo, linhas, invalidas, por) VALUES (?, ?, ?, ?, ?)').run('colaboradores', substituir ? 'substituir' : 'atualizar', validos.length, invalidas.length, req.rh.nome);
     db.exec('COMMIT');
   } catch (e) {
@@ -726,7 +725,7 @@ app.get('/api/admin/importacoes', exigirRh, (_req, res) => {
 function linhasDaFolha(competencia) {
   const config = configuracao();
   return db.prepare("SELECT * FROM solicitacoes WHERE competencia = ? AND status = 'aprovado' ORDER BY empresa, nome, beneficio").all(competencia).map(s => ({
-    matricula: s.matricula, nome: s.nome, cpf: s.cpf, empresa: s.empresa, cnpj: s.cnpj, unidade: s.unidade,
+    matricula: s.matricula, nome: s.nome, cpf: s.cpf, empresa: s.empresa, unidade: s.unidade,
     beneficio: R.BENEFICIOS[s.beneficio]?.nome || s.beneficio,
     beneficiario: s.beneficiario_nome,
     parentesco: s.beneficiario_tipo === 'titular' ? 'Titular' : (R.PARENTESCOS[s.beneficiario_tipo] || s.beneficiario_tipo),
@@ -749,14 +748,14 @@ app.get('/api/admin/folha', exigirRh, (req, res) => {
 
 app.get('/api/admin/folha.csv', exigirRh, (req, res) => {
   const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : R.competenciaDe(R.hojeISO());
-  const cab = ['Matrícula', 'Nome do colaborador', 'CPF', 'Empresa', 'CNPJ', 'Unidade/lotação', 'Benefício', 'Beneficiário', 'Parentesco',
+  const cab = ['Matrícula', 'Nome do colaborador', 'CPF', 'Empresa', 'Unidade/lotação', 'Benefício', 'Beneficiário', 'Parentesco',
     'Competência', 'Valor aprovado', 'Verba de folha', 'Data da aprovação', 'Aprovado por', 'Protocolo', 'Status'];
   const campo = (v) => {
     const s = String(v ?? '');
     return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const linhas = linhasDaFolha(competencia).map(l => [
-    l.matricula, l.nome, l.cpf, l.empresa, l.cnpj, l.unidade, l.beneficio, l.beneficiario, l.parentesco,
+    l.matricula, l.nome, l.cpf, l.empresa, l.unidade, l.beneficio, l.beneficiario, l.parentesco,
     l.competencia.split('-').reverse().join('/'), (l.valor_aprovado / 100).toFixed(2).replace('.', ','), l.verba,
     (l.data_aprovacao || '').slice(0, 10).split('-').reverse().join('/'), l.aprovado_por, l.protocolo, l.status,
   ].map(campo).join(';'));
