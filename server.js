@@ -293,7 +293,7 @@ app.get('/api/me', exigirColaborador, (req, res) => {
   res.json({
     hoje,
     colaborador: {
-      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, empresa: c.empresa, unidade: c.unidade,
+      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, unidade: c.unidade,
       sucedido: R.ehSucedido(c), data_desligamento: c.data_desligamento,
     },
     periodo: R.situacaoPeriodo(config, hoje),
@@ -387,10 +387,10 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
   db.exec('BEGIN IMMEDIATE');
   try {
     id = Number(db.prepare(`
-      INSERT INTO solicitacoes (cpf, matricula, nome, empresa, unidade, sucedido, beneficio, dependente_id,
+      INSERT INTO solicitacoes (cpf, matricula, nome, unidade, sucedido, beneficio, dependente_id,
         beneficiario_nome, beneficiario_tipo, competencia, data_documento, valor_solicitado, detalhes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-      colab.cpf, colab.matricula, colab.nome, colab.empresa, colab.unidade, R.ehSucedido(colab) ? 1 : 0,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      colab.cpf, colab.matricula, colab.nome, colab.unidade, R.ehSucedido(colab) ? 1 : 0,
       beneficio, dep ? dep.id : null, dep ? dep.nome : colab.nome, dep ? dep.parentesco : 'titular',
       competencia, dataDoc, valor, JSON.stringify(detalhes)).lastInsertRowid);
     const protocolo = `RB${competencia.replace('-', '')}-${String(id).padStart(5, '0')}`;
@@ -464,15 +464,15 @@ app.get('/api/admin/painel', exigirRh, (req, res) => {
       FROM solicitacoes WHERE competencia = ? AND beneficio = ?`).get(competencia, c);
     return { codigo: c, nome: R.BENEFICIOS[c].nome, icone: R.BENEFICIOS[c].icone, ...r };
   });
-  const porEmpresa = db.prepare(`
-    SELECT COALESCE(NULLIF(empresa, ''), '—') AS empresa, COUNT(*) AS total,
+  const porUnidade = db.prepare(`
+    SELECT COALESCE(NULLIF(unidade, ''), '—') AS unidade, COUNT(*) AS total,
       COALESCE(SUM(CASE WHEN status = 'aprovado' THEN valor_aprovado END), 0) AS valor_aprovado
     FROM solicitacoes WHERE competencia = ? GROUP BY 1 ORDER BY valor_aprovado DESC, total DESC`).all(competencia);
   const base = db.prepare('SELECT COUNT(*) AS ativos, (SELECT COUNT(*) FROM dependentes d JOIN colaboradores c ON c.cpf = d.cpf_titular WHERE d.ativo = 1 AND c.ativo = 1) AS dependentes FROM colaboradores WHERE ativo = 1').get();
   const ultimaCarga = db.prepare('SELECT tipo, linhas, por, em FROM importacoes ORDER BY id DESC LIMIT 1').get() || null;
   const pendentesAnteriores = db.prepare("SELECT COUNT(*) AS n FROM solicitacoes WHERE status = 'analise' AND competencia < ?").get(competencia).n;
   res.json({
-    competencia, hoje, periodo: R.situacaoPeriodo(config, hoje), totais: tot, por_beneficio: porBeneficio, por_empresa: porEmpresa,
+    competencia, hoje, periodo: R.situacaoPeriodo(config, hoje), totais: tot, por_beneficio: porBeneficio, por_unidade: porUnidade,
     base, ultima_carga: ultimaCarga, pendentes_anteriores: pendentesAnteriores,
   });
 });
@@ -483,7 +483,6 @@ app.get('/api/admin/filtros', exigirRh, (_req, res) => {
   const col = (sql) => db.prepare(sql).all().map(r => r.v).filter(Boolean);
   res.json({
     competencias: [...new Set([R.competenciaDe(R.hojeISO()), ...col('SELECT DISTINCT competencia AS v FROM solicitacoes ORDER BY v DESC')])].sort().reverse(),
-    empresas: col("SELECT DISTINCT empresa AS v FROM colaboradores WHERE empresa <> '' UNION SELECT DISTINCT empresa FROM solicitacoes WHERE empresa <> '' ORDER BY v"),
     unidades: col("SELECT DISTINCT unidade AS v FROM colaboradores WHERE unidade <> '' UNION SELECT DISTINCT unidade FROM solicitacoes WHERE unidade <> '' ORDER BY v"),
     beneficios: R.CODIGOS.map(c => ({ codigo: c, nome: R.BENEFICIOS[c].nome })),
   });
@@ -495,7 +494,6 @@ function filtrarSolicitacoes(q) {
   if (/^\d{4}-\d{2}$/.test(q.competencia || '')) { where.push('competencia = ?'); params.push(q.competencia); }
   if (['analise', 'aprovado', 'reprovado'].includes(q.status)) { where.push('status = ?'); params.push(q.status); }
   if (R.BENEFICIOS[q.beneficio]) { where.push('beneficio = ?'); params.push(q.beneficio); }
-  if (q.empresa) { where.push('empresa = ?'); params.push(q.empresa); }
   if (q.unidade) { where.push('unidade = ?'); params.push(q.unidade); }
   if (R.normalizarData(q.de)) { where.push('date(criado_em) >= ?'); params.push(R.normalizarData(q.de)); }
   if (R.normalizarData(q.ate)) { where.push('date(criado_em) <= ?'); params.push(R.normalizarData(q.ate)); }
@@ -617,7 +615,7 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
       return [cod, nomes];
     }));
     return {
-      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, empresa: c.empresa, unidade: c.unidade,
+      cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, unidade: c.unidade,
       data_admissao: c.data_admissao, sucedido: R.ehSucedido(c), data_desligamento: c.data_desligamento, ativo: c.ativo,
       ultimo_acesso: c.ultimo_acesso,
       dependentes: ds.map(d => ({ nome: d.nome, parentesco: R.PARENTESCOS[d.parentesco] || d.parentesco, data_nascimento: d.data_nascimento })),
@@ -651,7 +649,6 @@ app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
     validos.push({
       cpf, matricula, nome,
       email: String(l.email || '').trim().toLowerCase(),
-      empresa: String(l.empresa || '').trim(),
       unidade: String(l.unidade || '').trim(),
       data_admissao: R.normalizarData(l.data_admissao),
       sucedido: suc === 'S' ? 1 : suc === 'N' ? 0 : null,
@@ -660,15 +657,15 @@ app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
     });
   });
   const upsert = db.prepare(`
-    INSERT INTO colaboradores (cpf, matricula, nome, email, empresa, unidade, data_admissao, sucedido, data_desligamento, elegibilidade, ativo)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-    ON CONFLICT(cpf) DO UPDATE SET matricula = excluded.matricula, nome = excluded.nome, email = excluded.email, empresa = excluded.empresa,
+    INSERT INTO colaboradores (cpf, matricula, nome, email, unidade, data_admissao, sucedido, data_desligamento, elegibilidade, ativo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    ON CONFLICT(cpf) DO UPDATE SET matricula = excluded.matricula, nome = excluded.nome, email = excluded.email,
       unidade = excluded.unidade, data_admissao = excluded.data_admissao, sucedido = excluded.sucedido,
       data_desligamento = excluded.data_desligamento, elegibilidade = excluded.elegibilidade, ativo = 1, atualizado_em = datetime('now')`);
   db.exec('BEGIN');
   try {
     if (substituir) db.exec("UPDATE colaboradores SET ativo = 0, atualizado_em = datetime('now')");
-    for (const c of validos) upsert.run(c.cpf, c.matricula, c.nome, c.email, c.empresa, c.unidade, c.data_admissao, c.sucedido, c.data_desligamento, c.elegibilidade);
+    for (const c of validos) upsert.run(c.cpf, c.matricula, c.nome, c.email, c.unidade, c.data_admissao, c.sucedido, c.data_desligamento, c.elegibilidade);
     db.prepare('INSERT INTO importacoes (tipo, modo, linhas, invalidas, por) VALUES (?, ?, ?, ?, ?)').run('colaboradores', substituir ? 'substituir' : 'atualizar', validos.length, invalidas.length, req.rh.nome);
     db.exec('COMMIT');
   } catch (e) {
@@ -724,8 +721,8 @@ app.get('/api/admin/importacoes', exigirRh, (_req, res) => {
 
 function linhasDaFolha(competencia) {
   const config = configuracao();
-  return db.prepare("SELECT * FROM solicitacoes WHERE competencia = ? AND status = 'aprovado' ORDER BY empresa, nome, beneficio").all(competencia).map(s => ({
-    matricula: s.matricula, nome: s.nome, cpf: s.cpf, empresa: s.empresa, unidade: s.unidade,
+  return db.prepare("SELECT * FROM solicitacoes WHERE competencia = ? AND status = 'aprovado' ORDER BY unidade, nome, beneficio").all(competencia).map(s => ({
+    matricula: s.matricula, nome: s.nome, cpf: s.cpf, unidade: s.unidade,
     beneficio: R.BENEFICIOS[s.beneficio]?.nome || s.beneficio,
     beneficiario: s.beneficiario_nome,
     parentesco: s.beneficiario_tipo === 'titular' ? 'Titular' : (R.PARENTESCOS[s.beneficiario_tipo] || s.beneficiario_tipo),
@@ -748,14 +745,14 @@ app.get('/api/admin/folha', exigirRh, (req, res) => {
 
 app.get('/api/admin/folha.csv', exigirRh, (req, res) => {
   const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : R.competenciaDe(R.hojeISO());
-  const cab = ['Matrícula', 'Nome do colaborador', 'CPF', 'Empresa', 'Unidade/lotação', 'Benefício', 'Beneficiário', 'Parentesco',
+  const cab = ['Matrícula', 'Nome do colaborador', 'CPF', 'Unidade/lotação', 'Benefício', 'Beneficiário', 'Parentesco',
     'Competência', 'Valor aprovado', 'Verba de folha', 'Data da aprovação', 'Aprovado por', 'Protocolo', 'Status'];
   const campo = (v) => {
     const s = String(v ?? '');
     return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const linhas = linhasDaFolha(competencia).map(l => [
-    l.matricula, l.nome, l.cpf, l.empresa, l.unidade, l.beneficio, l.beneficiario, l.parentesco,
+    l.matricula, l.nome, l.cpf, l.unidade, l.beneficio, l.beneficiario, l.parentesco,
     l.competencia.split('-').reverse().join('/'), (l.valor_aprovado / 100).toFixed(2).replace('.', ','), l.verba,
     (l.data_aprovacao || '').slice(0, 10).split('-').reverse().join('/'), l.aprovado_por, l.protocolo, l.status,
   ].map(campo).join(';'));

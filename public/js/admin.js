@@ -55,7 +55,6 @@ async function carregarFiltros() {
   document.getElementById('folha-comp').innerHTML = opcoesComp;
   document.getElementById('f-comp').innerHTML = `<option value="">Todas as competências</option>${opcoesComp}`;
   document.getElementById('f-beneficio').innerHTML = `<option value="">Todos os benefícios</option>${f.beneficios.map(b => `<option value="${b.codigo}">${esc(b.nome)}</option>`).join('')}`;
-  document.getElementById('f-empresa').innerHTML = `<option value="">Todas as empresas</option>${f.empresas.map(x => `<option>${esc(x)}</option>`).join('')}`;
   document.getElementById('f-unidade').innerHTML = `<option value="">Todas as unidades</option>${f.unidades.map(x => `<option>${esc(x)}</option>`).join('')}`;
 }
 
@@ -99,9 +98,9 @@ async function carregarPainel() {
   document.getElementById('painel-tab-beneficios').innerHTML = `
     <tr><th>Benefício</th><th>Total</th><th>Em análise</th><th>Aprovadas</th><th>Reprovadas</th></tr>
     ${d.por_beneficio.map(b => `<tr><td style="white-space:nowrap">${b.icone} ${esc(b.nome.replace('Reembolso ', ''))}</td><td>${fmt(b.total)}</td><td>${fmt(b.analise)}</td><td>${fmt(b.aprovadas)}</td><td>${fmt(b.reprovadas)}</td></tr>`).join('')}`;
-  document.getElementById('painel-empresas').innerHTML = `
-    <tr><th>Empresa</th><th>Solicitações</th><th>Valor aprovado</th></tr>
-    ${d.por_empresa.map(e => `<tr><td>${esc(e.empresa)}</td><td>${fmt(e.total)}</td><td>${reais(e.valor_aprovado)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhuma solicitação nesta competência.</td></tr>'}`;
+  document.getElementById('painel-unidades').innerHTML = `
+    <tr><th>Unidade</th><th>Solicitações</th><th>Valor aprovado</th></tr>
+    ${d.por_unidade.map(e => `<tr><td>${esc(e.unidade)}</td><td>${fmt(e.total)}</td><td>${reais(e.valor_aprovado)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhuma solicitação nesta competência.</td></tr>'}`;
 }
 document.getElementById('painel-comp').addEventListener('change', () => carregarPainel().catch(err => toast(err.message, 'erro')));
 document.addEventListener('click', (e) => {
@@ -113,7 +112,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- Solicitações ----------
-const IDS_FILTRO = { competencia: 'f-comp', status: 'f-status', beneficio: 'f-beneficio', empresa: 'f-empresa', unidade: 'f-unidade', de: 'f-de', ate: 'f-ate', busca: 'f-busca' };
+const IDS_FILTRO = { competencia: 'f-comp', status: 'f-status', beneficio: 'f-beneficio', unidade: 'f-unidade', de: 'f-de', ate: 'f-ate', busca: 'f-busca' };
 
 async function carregarSolicitacoes() {
   const q = new URLSearchParams();
@@ -123,13 +122,13 @@ async function carregarSolicitacoes() {
   const total = lista.reduce((s, x) => s + x.valor_solicitado, 0);
   document.getElementById('resumo-sol').textContent = `· ${fmt(lista.length)} encontrada(s) · ${reais(total)} solicitados`;
   document.getElementById('tabela-sol').innerHTML = `
-    <tr><th>Protocolo</th><th>Enviada em</th><th>Colaborador</th><th>Empresa / unidade</th><th>Benefício</th><th>Beneficiário</th><th>Documento</th><th>Solicitado</th><th>Aprovado</th><th>Status</th><th></th></tr>
+    <tr><th>Protocolo</th><th>Enviada em</th><th>Colaborador</th><th>Unidade</th><th>Benefício</th><th>Beneficiário</th><th>Documento</th><th>Solicitado</th><th>Aprovado</th><th>Status</th><th></th></tr>
     ${lista.map(s => `
       <tr>
         <td><strong>${esc(s.protocolo)}</strong></td>
         <td>${dataHoraBR(s.criado_em)}</td>
         <td>${esc(s.nome)}<br><small class="q-dica">Mat. ${esc(s.matricula)} · ${formatarCpf(s.cpf)}</small></td>
-        <td>${esc(s.empresa || '–')}<br><small class="q-dica">${esc(s.unidade || '')}</small></td>
+        <td>${esc(s.unidade || '–')}</td>
         <td>${ICONES[s.beneficio] || ''} ${esc(s.beneficio_nome.replace('Reembolso ', ''))}</td>
         <td>${esc(s.beneficiario_nome)}<br><small class="q-dica">${esc(s.beneficiario_rotulo)}</small></td>
         <td>${dataBR(s.data_documento)}<br><small class="q-dica">${fmt(s.qtd_anexos)} anexo(s)</small></td>
@@ -155,7 +154,7 @@ document.getElementById('tabela-sol').addEventListener('click', (e) => {
 document.getElementById('exportar-sol').addEventListener('click', () => {
   const linhas = adm.solicitacoes.map(s => ({
     Protocolo: s.protocolo, 'Enviada em': dataHoraBR(s.criado_em), Matrícula: s.matricula, Colaborador: s.nome, CPF: formatarCpf(s.cpf),
-    Empresa: s.empresa, Unidade: s.unidade, Benefício: s.beneficio_nome, Beneficiário: s.beneficiario_nome, Vínculo: s.beneficiario_rotulo,
+    Unidade: s.unidade, Benefício: s.beneficio_nome, Beneficiário: s.beneficiario_nome, Vínculo: s.beneficiario_rotulo,
     Competência: competenciaBR(s.competencia), 'Data do documento': dataBR(s.data_documento),
     'Valor solicitado': s.valor_solicitado / 100, 'Valor aprovado': s.valor_aprovado == null ? '' : s.valor_aprovado / 100,
     Status: STATUS[s.status]?.nome || s.status, 'Observação do RH': s.observacao_rh || '', 'Analisado por': s.analisado_por || '', 'Analisado em': dataHoraBR(s.analisado_em),
@@ -193,7 +192,6 @@ async function abrirAnalise(id) {
           <div><dt>Nome</dt><dd>${esc(s.nome)}</dd></div>
           <div><dt>Matrícula</dt><dd>${esc(s.matricula)}</dd></div>
           <div><dt>CPF</dt><dd>${formatarCpf(s.cpf)}</dd></div>
-          <div><dt>Empresa</dt><dd>${esc(s.empresa || '–')}</dd></div>
           <div><dt>Unidade</dt><dd>${esc(s.unidade || '–')}</dd></div>
           <div><dt>Perfil</dt><dd>${s.sucedido ? 'Sucedido' : 'Não sucedido'}</dd></div>
         </dl>
@@ -306,8 +304,8 @@ async function carregarFolha() {
     ? `<div class="alerta aviso" style="margin:0 0 1.2rem">⚠️ <span>Ainda há <strong>${fmt(d.pendentes)}</strong> solicitação(ões) em análise em ${competenciaBR(d.competencia)}. Conclua a análise antes de extrair a base para a folha.</span></div>`
     : `<div class="alerta ok" style="margin:0 0 1.2rem">✅ <span>Todas as solicitações de ${competenciaBR(d.competencia)} foram analisadas.</span></div>`;
   document.getElementById('tabela-folha').innerHTML = `
-    <tr><th>Matrícula</th><th>Colaborador</th><th>CPF</th><th>Empresa</th><th>Unidade</th><th>Benefício</th><th>Beneficiário</th><th>Valor aprovado</th><th>Verba</th><th>Aprovação</th></tr>
-    ${d.linhas.map(l => `<tr><td>${esc(l.matricula)}</td><td>${esc(l.nome)}</td><td>${formatarCpf(l.cpf)}</td><td>${esc(l.empresa)}</td><td>${esc(l.unidade)}</td>
+    <tr><th>Matrícula</th><th>Colaborador</th><th>CPF</th><th>Unidade</th><th>Benefício</th><th>Beneficiário</th><th>Valor aprovado</th><th>Verba</th><th>Aprovação</th></tr>
+    ${d.linhas.map(l => `<tr><td>${esc(l.matricula)}</td><td>${esc(l.nome)}</td><td>${formatarCpf(l.cpf)}</td><td>${esc(l.unidade)}</td>
       <td>${esc(l.beneficio)}</td><td>${esc(l.beneficiario)}<br><small class="q-dica">${esc(l.parentesco)}</small></td><td><strong>${reais(l.valor_aprovado)}</strong></td>
       <td>${esc(l.verba) || '<span class="q-dica">definir</span>'}</td><td>${dataBR(l.data_aprovacao)}</td></tr>`).join('') || '<tr><td colspan="10">Nenhuma solicitação aprovada nesta competência.</td></tr>'}`;
 }
@@ -316,7 +314,7 @@ document.getElementById('folha-xlsx').addEventListener('click', () => {
   const d = adm.folha;
   if (!d) return;
   baixarExcel(d.linhas.map(l => ({
-    'Matrícula': l.matricula, 'Nome do colaborador': l.nome, CPF: l.cpf, Empresa: l.empresa, 'Unidade/lotação': l.unidade,
+    'Matrícula': l.matricula, 'Nome do colaborador': l.nome, CPF: l.cpf, 'Unidade/lotação': l.unidade,
     Benefício: l.beneficio, Beneficiário: l.beneficiario, Parentesco: l.parentesco, Competência: competenciaBR(l.competencia),
     'Valor aprovado': l.valor_aprovado / 100, 'Verba de folha': l.verba, 'Data da aprovação': dataBR(l.data_aprovacao),
     'Aprovado por': l.aprovado_por, Protocolo: l.protocolo, Status: l.status,
@@ -326,7 +324,7 @@ document.getElementById('folha-xlsx').addEventListener('click', () => {
 // ---------- Base de elegibilidade ----------
 const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 const CAMPOS = {
-  colab: ['cpf', 'matricula', 'nome', 'email', 'empresa', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos'],
+  colab: ['cpf', 'matricula', 'nome', 'email', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos'],
   dep: ['cpf_titular', 'nome', 'cpf', 'parentesco', 'data_nascimento', 'medicamento', 'educacional', 'creche', 'oculos'],
 };
 // Nomes alternativos aceitos no cabeçalho da planilha.
@@ -419,17 +417,17 @@ function renderColaboradores() {
   const termo = semAcento(document.getElementById('busca-colab').value);
   const digitos = termo.replace(/[.\-/\s]/g, '');
   const lista = adm.colaboradores.filter(c => !termo
-    || semAcento([c.nome, c.matricula, c.empresa, c.unidade, c.email].join(' ')).includes(termo)
+    || semAcento([c.nome, c.matricula, c.unidade, c.email].join(' ')).includes(termo)
     || (digitos && /^\d+$/.test(digitos) && c.cpf.includes(digitos)));
   const ativos = adm.colaboradores.filter(c => c.ativo).length;
   document.getElementById('qtd-colab').textContent = `· ${fmt(ativos)} ativos de ${fmt(adm.colaboradores.length)}`;
   document.getElementById('tabela-colab').innerHTML = `
-    <tr><th>CPF</th><th>Matrícula</th><th>Nome</th><th>Empresa / unidade</th><th>Perfil</th><th>Dependentes</th><th>Elegibilidade</th><th>Acesso</th></tr>
+    <tr><th>CPF</th><th>Matrícula</th><th>Nome</th><th>Unidade</th><th>Perfil</th><th>Dependentes</th><th>Elegibilidade</th><th>Acesso</th></tr>
     ${lista.slice(0, 500).map(c => `
       <tr class="${c.ativo ? '' : 'inativo'}">
         <td>${formatarCpf(c.cpf)}</td><td>${esc(c.matricula)}</td>
         <td>${esc(c.nome)}${c.data_desligamento ? `<br><small class="q-dica">Desligamento: ${dataBR(c.data_desligamento)}</small>` : ''}</td>
-        <td>${esc(c.empresa || '–')}<br><small class="q-dica">${esc(c.unidade || '')}</small></td>
+        <td>${esc(c.unidade || '–')}</td>
         <td>${c.sucedido ? 'Sucedido' : 'Não sucedido'}<br><small class="q-dica">Admissão ${dataBR(c.data_admissao)}</small></td>
         <td title="${esc(c.dependentes.map(d => `${d.nome} (${d.parentesco})`).join('\n'))}">${fmt(c.dependentes.length)}</td>
         <td>${Object.entries(c.beneficios).filter(([, n]) => n.length).map(([k, n]) => `<span class="etiqueta neutra" title="${esc(n.join('\n'))}">${ICONES[k]} ${n.length}</span>`).join(' ') || '<span class="q-dica">nenhum</span>'}</td>

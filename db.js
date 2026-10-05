@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS colaboradores (
   matricula         TEXT NOT NULL,
   nome              TEXT NOT NULL,
   email             TEXT,
-  empresa           TEXT,
   unidade           TEXT,
   data_admissao     TEXT,
   sucedido          INTEGER,          -- 1 sucedido, 0 não sucedido, NULL = pela data de admissão
@@ -56,7 +55,6 @@ CREATE TABLE IF NOT EXISTS solicitacoes (
   cpf                TEXT NOT NULL REFERENCES colaboradores(cpf),
   matricula          TEXT,
   nome               TEXT,
-  empresa            TEXT,
   unidade            TEXT,
   sucedido           INTEGER,
   beneficio          TEXT NOT NULL,

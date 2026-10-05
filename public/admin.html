@@ -75,8 +75,8 @@
           </section>
         </div>
         <section class="cartao" style="margin-top:1.4rem">
-          <h3>Por empresa</h3>
-          <div class="tabela-wrap"><table class="tabela" id="painel-empresas"></table></div>
+          <h3>Por unidade</h3>
+          <div class="tabela-wrap"><table class="tabela" id="painel-unidades"></table></div>
         </section>
       </section>
 
@@ -92,7 +92,6 @@
               <option value="">Todos os status</option><option value="analise" selected>Em análise</option><option value="aprovado">Aprovado</option><option value="reprovado">Reprovado</option>
             </select>
             <select class="campo" id="f-beneficio" aria-label="Benefício"><option value="">Todos os benefícios</option></select>
-            <select class="campo" id="f-empresa" aria-label="Empresa"><option value="">Todas as empresas</option></select>
             <select class="campo" id="f-unidade" aria-label="Unidade"><option value="">Todas as unidades</option></select>
             <label class="check">De <input class="campo" type="date" id="f-de" aria-label="Enviadas a partir de"></label>
             <label class="check">até <input class="campo" type="date" id="f-ate" aria-label="Enviadas até"></label>
@@ -132,7 +131,7 @@
         <div class="ind-grade">
           <div class="cartao">
             <h3>📥 Colaboradores <small>· carga mensal</small></h3>
-            <p class="q-dica">Colunas: CPF, MATRICULA, NOME, EMAIL, EMPRESA, UNIDADE, DATA_ADMISSAO, SUCEDIDO (S/N), DATA_DESLIGAMENTO e as colunas
+            <p class="q-dica">Colunas: CPF, MATRICULA, NOME, EMAIL, UNIDADE, DATA_ADMISSAO, SUCEDIDO (S/N), DATA_DESLIGAMENTO e as colunas
               MEDICAMENTO, EDUCACIONAL, CRECHE, OCULOS (S libera · N bloqueia · vazio segue a regra do benefício).</p>
             <div class="importar">
               <input type="file" id="arq-colab" accept=".xlsx,.xls,.csv" class="campo">
@@ -161,7 +160,7 @@
         <div class="cartao" style="margin-top:1.4rem">
           <div class="cab-tabela">
             <h3>👥 Colaboradores <small id="qtd-colab"></small></h3>
-            <input class="campo busca" id="busca-colab" placeholder="Buscar por nome, CPF, matrícula, empresa…">
+            <input class="campo busca" id="busca-colab" placeholder="Buscar por nome, CPF, matrícula, unidade…">
           </div>
           <div class="tabela-wrap"><table class="tabela" id="tabela-colab"></table></div>
         </div>

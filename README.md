@@ -58,12 +58,12 @@ Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
 2. **Colaborador acessa** com o CPF. Vê apenas os benefícios e os dependentes elegíveis, com o saldo de cada um.
 3. **Nova solicitação** em 5 passos: benefício → beneficiário → data e valor do documento → anexos obrigatórios →
    confirmação (dados cadastrais preenchidos pela base + declaração). Validações na tela e no servidor.
-4. **RH analisa**: filtros por competência, status, benefício, empresa, unidade, período e busca; vê anexos, saldo do limite
+4. **RH analisa**: filtros por competência, status, benefício, unidade, período e busca; vê anexos, saldo do limite
    e histórico do beneficiário; **aprova** (total ou parcial) ou **reprova** (justificativa obrigatória, exibida ao colaborador).
    Decisões podem ser reabertas com motivo. Tudo fica na linha do tempo com data, hora e responsável.
 5. **Colaborador acompanha** o status (Em análise / Aprovado / Reprovado) e recebe e-mail no envio e na decisão (se SMTP configurado).
 6. **Dia 11 – Folha de pagamento**: o RH extrai as aprovadas da competência em **CSV** (`;`, vírgula decimal, pronto para o
-   Excel/importação) ou **Excel**, com matrícula, nome, CPF, empresa, unidade, benefício, beneficiário, competência,
+   Excel/importação) ou **Excel**, com matrícula, nome, CPF, unidade, benefício, beneficiário, competência,
    valor aprovado, verba de folha, data da aprovação e status. O sistema avisa se ainda houver solicitações em análise.
 
 ## Regras implementadas
@@ -83,7 +83,7 @@ Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
 | Desligados | Removidos na carga *substituir* (ou bloqueados manualmente). `DATA_DESLIGAMENTO` impede documentos posteriores a ela. |
 | Limites e verbas | Editáveis em Configurações (reajustes de valores e código da verba de folha de cada benefício). |
 
-Os dados cadastrais (matrícula, empresa, unidade, perfil) são **copiados na solicitação** no momento do envio, para o relatório
+Os dados cadastrais (matrícula, unidade, perfil) são **copiados na solicitação** no momento do envio, para o relatório
 da folha não mudar quando a base do mês seguinte for importada. Dependentes são identificados entre cargas pelo CPF
 (ou nome + data de nascimento), preservando o histórico de limites.
 
