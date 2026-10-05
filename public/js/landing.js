@@ -76,6 +76,13 @@ function desenharCalendario(hoje, p) {
     document.querySelectorAll('[data-dia-fim]').forEach(el => { el.textContent = dois(p.dia_fim); });
     document.querySelectorAll('[data-prazo]').forEach(el => { el.textContent = r.prazo_documento_dias; });
     desenharCalendario(r.hoje, p);
+    if (r.suspenso) {
+      // Portal suspenso pelo administrador: avisa e desabilita o acesso.
+      const aviso = document.getElementById('aviso-suspenso');
+      aviso.innerHTML = `🚦 <span>${esc(r.suspenso)}</span>`;
+      aviso.hidden = false;
+      form.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
+    }
     document.getElementById('lista-beneficios').innerHTML = r.beneficios.map(b => {
       const valor = b.escopo === 'dependente_mes'
         ? `até ${reais(b.limite_sucedido)}` : `até ${reais(b.limite)}`;

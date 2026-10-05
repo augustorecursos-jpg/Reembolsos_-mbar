@@ -2,7 +2,7 @@
 // Uso: npm run seed
 const fs = require('node:fs');
 const path = require('node:path');
-const { db, ANEXOS_DIR } = require('../db');
+const { db, ANEXOS_DIR, gerarHash } = require('../db');
 const R = require('../regras');
 
 const hoje = R.hojeISO();
@@ -96,6 +96,12 @@ if (!db.prepare('SELECT 1 FROM solicitacoes LIMIT 1').get()) {
   }
 }
 
+// Usuário de teste com perfil RH (análise), para ver a diferença entre a Área do RH e a Administração.
+if (!db.prepare("SELECT 1 FROM usuarios_rh WHERE login = 'rh.teste'").get()) {
+  db.prepare("INSERT INTO usuarios_rh (nome, login, senha_hash, perfil) VALUES ('Analista de Teste', 'rh.teste', ?, 'rh')").run(gerarHash('rh-teste-123'));
+}
+
 console.log('Dados de demonstração criados. Acesso do colaborador (CPF):');
 for (const c of colaboradores) console.log(`  ${c.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')}  ${c.nome}`);
-console.log('Área do RH: usuário "admin" com a senha de ADMIN_PASSWORD (padrão local: ambar-rh).');
+console.log('Administração e Área do RH: usuário "admin" com a senha de ADMIN_PASSWORD (padrão local: ambar-rh).');
+console.log('Somente Área do RH: usuário "rh.teste", senha "rh-teste-123".');

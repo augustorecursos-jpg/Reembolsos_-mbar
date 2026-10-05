@@ -121,6 +121,36 @@ CREATE TABLE IF NOT EXISTS configuracoes (
 );
 `);
 
+// ---------- atualizações do esquema (bancos criados antes de cada versão) ----------
+
+function adicionarColuna(tabela, coluna, definicao) {
+  const existe = db.prepare(`PRAGMA table_info(${tabela})`).all().some(c => c.name === coluna);
+  if (!existe) db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${definicao}`);
+  return !existe;
+}
+
+// Perfis de acesso: 'rh' (analisa solicitações) e 'admin' (controla a ferramenta inteira).
+if (adicionarColuna('usuarios_rh', 'perfil', "TEXT NOT NULL DEFAULT 'rh'")) {
+  db.exec("UPDATE usuarios_rh SET perfil = 'admin' WHERE login = 'admin'");
+}
+adicionarColuna('usuarios_rh', 'ultimo_acesso', 'TEXT');
+// Comentários internos do RH não aparecem para o colaborador.
+adicionarColuna('eventos', 'interno', 'INTEGER NOT NULL DEFAULT 0');
+
+// Registro das ações de quem usa a Área do RH e a Administração.
+db.exec(`
+CREATE TABLE IF NOT EXISTS auditoria (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  usuario TEXT,
+  perfil  TEXT,
+  acao    TEXT NOT NULL,
+  detalhe TEXT,
+  ip      TEXT,
+  em      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_em ON auditoria (em);
+`);
+
 // ---------- senhas do RH (scrypt) ----------
 
 function gerarHash(senha) {
@@ -137,12 +167,16 @@ function conferirSenha(senha, guardado) {
   return crypto.timingSafeEqual(esperado, obtido);
 }
 
-/** Na primeira execução cria o usuário "admin" do RH com a senha de ADMIN_PASSWORD. */
+/** Garante um administrador: na primeira execução cria o usuário "admin" com a senha de ADMIN_PASSWORD. */
 function garantirAdministrador(senhaInicial) {
-  const existe = db.prepare('SELECT COUNT(*) AS n FROM usuarios_rh').get().n;
+  const existe = db.prepare("SELECT COUNT(*) AS n FROM usuarios_rh WHERE perfil = 'admin'").get().n;
   if (existe || !senhaInicial) return;
-  db.prepare('INSERT INTO usuarios_rh (nome, login, senha_hash) VALUES (?, ?, ?)').run('Administrador', 'admin', gerarHash(senhaInicial));
-  console.log('[rh] Usuário "admin" criado com a senha de ADMIN_PASSWORD. Cadastre os analistas em Configurações.');
+  if (db.prepare("SELECT 1 FROM usuarios_rh WHERE login = 'admin'").get()) {
+    db.prepare("UPDATE usuarios_rh SET perfil = 'admin', ativo = 1 WHERE login = 'admin'").run();
+    return;
+  }
+  db.prepare("INSERT INTO usuarios_rh (nome, login, senha_hash, perfil) VALUES (?, ?, ?, 'admin')").run('Administrador', 'admin', gerarHash(senhaInicial));
+  console.log('[admin] Usuário "admin" (administrador) criado com a senha de ADMIN_PASSWORD. Cadastre o time de RH na Administração.');
 }
 
 module.exports = { db, DATA_DIR, ANEXOS_DIR, gerarHash, conferirSenha, garantirAdministrador };

@@ -77,7 +77,11 @@ function lerColaborador(cpf) {
   return c;
 }
 
+const MSG_SUSPENSO = 'O Portal de Reembolsos está temporariamente indisponível. Tente novamente mais tarde.';
+
 function exigirColaborador(req, res, next) {
+  const cfg = configuracao();
+  if (cfg.portal_suspenso) return res.status(503).json({ erro: cfg.mensagem_suspensao || MSG_SUSPENSO });
   const s = verificar(lerCookies(req).sess_colab);
   const colab = s && lerColaborador(s.cpf);
   if (!colab) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente com seu CPF.' });
@@ -87,14 +91,29 @@ function exigirColaborador(req, res, next) {
 
 function sessaoRh(req) {
   const s = verificar(lerCookies(req).sess_rh);
-  return s && db.prepare('SELECT id, nome, login FROM usuarios_rh WHERE id = ? AND ativo = 1').get(s.uid);
+  // Perfil e situação são lidos a cada requisição: bloquear ou mudar o perfil vale na hora.
+  return s && db.prepare('SELECT id, nome, login, perfil FROM usuarios_rh WHERE id = ? AND ativo = 1').get(s.uid);
 }
 
+/** Área do RH: qualquer usuário ativo (perfil rh ou admin). */
 function exigirRh(req, res, next) {
   const u = sessaoRh(req);
   if (!u) return res.status(401).json({ erro: 'Acesso restrito ao RH.' });
   req.rh = u;
   next();
+}
+
+/** Administração: somente perfil admin. */
+function exigirAdmin(req, res, next) {
+  exigirRh(req, res, () => {
+    if (req.rh.perfil !== 'admin') return res.status(403).json({ erro: 'Acesso restrito ao administrador do portal.' });
+    next();
+  });
+}
+
+const inserirAuditoria = db.prepare('INSERT INTO auditoria (usuario, perfil, acao, detalhe, ip) VALUES (?, ?, ?, ?, ?)');
+function auditar(req, acao, detalhe = null, usuario = null) {
+  inserirAuditoria.run(usuario || req.rh?.nome || null, req.rh?.perfil || null, acao, detalhe, req.ip);
 }
 
 function configuracao() {
@@ -127,6 +146,7 @@ const limiteRh = limitadorDeFalhas({ maximo: 10, janelaMin: 15 });
 const MSG_LIMITE = 'Muitas tentativas seguidas. Aguarde alguns minutos e tente novamente.';
 
 const registrarEvento = db.prepare('INSERT INTO eventos (solicitacao_id, evento, detalhe, por) VALUES (?, ?, ?, ?)');
+const registrarComentario = db.prepare("INSERT INTO eventos (solicitacao_id, evento, detalhe, por, interno) VALUES (?, 'Comentário do RH', ?, ?, ?)");
 
 // ---------- limites e elegibilidade ----------
 
@@ -230,6 +250,7 @@ app.get('/api/publico/info', (_req, res) => {
   res.json({
     hoje,
     periodo: R.situacaoPeriodo(config, hoje),
+    suspenso: config.portal_suspenso ? (config.mensagem_suspensao || MSG_SUSPENSO) : null,
     prazo_documento_dias: config.prazo_documento_dias,
     beneficios: R.CODIGOS.filter(c => config.beneficios[c].ativo).map(c => {
       const b = R.BENEFICIOS[c];
@@ -247,6 +268,8 @@ app.get('/api/publico/info', (_req, res) => {
 
 app.post('/api/entrar', (req, res) => {
   if (limiteColab.bloqueado(req)) return res.status(429).json({ erro: MSG_LIMITE });
+  const cfg = configuracao();
+  if (cfg.portal_suspenso) return res.status(503).json({ erro: cfg.mensagem_suspensao || MSG_SUSPENSO });
   const cpf = normalizarCpf(req.body?.cpf);
   const colab = cpf && lerColaborador(cpf);
   if (!colab) {
@@ -266,7 +289,7 @@ app.post('/api/sair', (_req, res) => {
 function solicitacoesDe(cpf) {
   const lista = db.prepare('SELECT * FROM solicitacoes WHERE cpf = ? ORDER BY id DESC').all(cpf);
   const anexos = db.prepare('SELECT id, tipo, nome_original, tamanho FROM anexos WHERE solicitacao_id = ? ORDER BY id');
-  const eventos = db.prepare('SELECT evento, detalhe, em FROM eventos WHERE solicitacao_id = ? ORDER BY id');
+  const eventos = db.prepare('SELECT evento, detalhe, em FROM eventos WHERE solicitacao_id = ? AND interno = 0 ORDER BY id');
   return lista.map(s => ({
     ...s,
     detalhes: JSON.parse(s.detalhes || '{}'),
@@ -428,13 +451,20 @@ app.get('/api/anexos/:id', (req, res) => {
 app.post('/api/admin/entrar', (req, res) => {
   if (limiteRh.bloqueado(req)) return res.status(429).json({ erro: MSG_LIMITE });
   const login = String(req.body?.login || '').trim().toLowerCase();
-  const u = db.prepare('SELECT * FROM usuarios_rh WHERE login = ? AND ativo = 1').get(login);
+  const u = db.prepare('SELECT * FROM usuarios_rh WHERE login = ?').get(login);
   if (!u || !conferirSenha(String(req.body?.senha || ''), u.senha_hash)) {
     limiteRh.registrar(req);
+    auditar(req, 'Falha de login', `Login informado: ${login.slice(0, 60) || '(vazio)'}`, login.slice(0, 60) || null);
     return res.status(401).json({ erro: 'Usuário ou senha incorretos.' });
   }
+  if (!u.ativo) {
+    auditar(req, 'Login recusado (usuário bloqueado)', null, u.nome);
+    return res.status(403).json({ erro: 'Usuário bloqueado. Procure o administrador do portal.' });
+  }
+  db.prepare("UPDATE usuarios_rh SET ultimo_acesso = datetime('now') WHERE id = ?").run(u.id);
+  inserirAuditoria.run(u.nome, u.perfil, 'Entrou', null, req.ip);
   definirSessao(res, 'sess_rh', { uid: u.id }, 8);
-  res.json({ ok: true, nome: u.nome });
+  res.json({ ok: true, nome: u.nome, perfil: u.perfil });
 });
 
 app.post('/api/admin/sair', (_req, res) => {
@@ -540,7 +570,7 @@ app.get('/api/admin/solicitacoes/:id', exigirRh, (req, res) => {
     email: colab.email || null,
     anexos: db.prepare('SELECT id, tipo, nome_original, mime, tamanho FROM anexos WHERE solicitacao_id = ? ORDER BY id').all(s.id)
       .map(a => ({ ...a, tipo_nome: R.DOCUMENTOS[a.tipo] || 'Outro documento' })),
-    eventos: db.prepare('SELECT evento, detalhe, por, em FROM eventos WHERE solicitacao_id = ? ORDER BY id').all(s.id),
+    eventos: db.prepare('SELECT evento, detalhe, por, em, interno FROM eventos WHERE solicitacao_id = ? ORDER BY id').all(s.id),
     saldo: { limite: sal.limite, usado: sal.usado, disponivel: sal.disponivel, escopo: b.escopo, janela: sal.janela },
     historico,
     dias_documento: R.diasEntre(s.data_documento, s.criado_em.slice(0, 10)),
@@ -560,6 +590,7 @@ app.post('/api/admin/solicitacoes/:id/decidir', exigirRh, (req, res) => {
     db.prepare("UPDATE solicitacoes SET status = 'reprovado', valor_aprovado = NULL, observacao_rh = ?, analisado_em = datetime('now'), analisado_por = ? WHERE id = ?")
       .run(observacao, req.rh.nome, s.id);
     registrarEvento.run(s.id, 'Reprovada', observacao, req.rh.nome);
+    auditar(req, 'Reprovou solicitação', s.protocolo);
   } else if (decisao === 'aprovado') {
     const valor = req.body?.valor_aprovado === undefined || req.body?.valor_aprovado === '' ? s.valor_solicitado : R.paraCentavos(req.body.valor_aprovado);
     if (!valor || valor <= 0) return res.status(400).json({ erro: 'Informe o valor aprovado.' });
@@ -572,6 +603,7 @@ app.post('/api/admin/solicitacoes/:id/decidir', exigirRh, (req, res) => {
     db.prepare("UPDATE solicitacoes SET status = 'aprovado', valor_aprovado = ?, observacao_rh = ?, analisado_em = datetime('now'), analisado_por = ? WHERE id = ?")
       .run(valor, observacao || null, req.rh.nome, s.id);
     registrarEvento.run(s.id, 'Aprovada', `${R.formatarReais(valor)}${valor < s.valor_solicitado ? ' (parcial)' : ''}${observacao ? ` · ${observacao}` : ''}`, req.rh.nome);
+    auditar(req, 'Aprovou solicitação', `${s.protocolo} · ${R.formatarReais(valor)}`);
   } else {
     return res.status(400).json({ erro: 'Decisão inválida.' });
   }
@@ -589,12 +621,25 @@ app.post('/api/admin/solicitacoes/:id/reabrir', exigirRh, (req, res) => {
   if (motivo.length < 5) return res.status(400).json({ erro: 'Informe o motivo da reabertura.' });
   db.prepare("UPDATE solicitacoes SET status = 'analise', valor_aprovado = NULL, observacao_rh = NULL, analisado_em = NULL, analisado_por = NULL WHERE id = ?").run(s.id);
   registrarEvento.run(s.id, 'Reaberta para nova análise', motivo, req.rh.nome);
+  auditar(req, 'Reabriu solicitação', `${s.protocolo} · ${motivo}`);
   res.json({ ok: true });
+});
+
+/** Comentário do RH na solicitação: interno (só o RH vê) ou visível ao colaborador. */
+app.post('/api/admin/solicitacoes/:id/comentar', exigirRh, (req, res) => {
+  const s = db.prepare('SELECT id, protocolo FROM solicitacoes WHERE id = ?').get(Number(req.params.id));
+  if (!s) return res.status(404).json({ erro: 'Solicitação não encontrada.' });
+  const texto = String(req.body?.texto || '').trim().slice(0, 1000);
+  if (texto.length < 3) return res.status(400).json({ erro: 'Escreva o comentário.' });
+  const interno = req.body?.visivel_colaborador ? 0 : 1;
+  registrarComentario.run(s.id, texto, req.rh.nome, interno);
+  auditar(req, interno ? 'Comentou (interno)' : 'Comentou (visível ao colaborador)', s.protocolo);
+  res.status(201).json({ ok: true });
 });
 
 // -- Base de elegibilidade --
 
-app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
+app.get('/api/admin/colaboradores', exigirAdmin, (_req, res) => {
   const config = configuracao();
   const hoje = R.hojeISO();
   const deps = db.prepare('SELECT * FROM dependentes WHERE ativo = 1 ORDER BY nome').all();
@@ -625,16 +670,18 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
   res.json(lista);
 });
 
-app.patch('/api/admin/colaboradores/:cpf', exigirRh, (req, res) => {
+app.patch('/api/admin/colaboradores/:cpf', exigirAdmin, (req, res) => {
   const cpf = normalizarCpf(req.params.cpf);
-  const r = db.prepare("UPDATE colaboradores SET ativo = ?, atualizado_em = datetime('now') WHERE cpf = ?").run(req.body?.ativo ? 1 : 0, cpf);
-  if (!r.changes) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
+  const c = cpf && db.prepare('SELECT nome FROM colaboradores WHERE cpf = ?').get(cpf);
+  if (!c) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
+  db.prepare("UPDATE colaboradores SET ativo = ?, atualizado_em = datetime('now') WHERE cpf = ?").run(req.body?.ativo ? 1 : 0, cpf);
+  auditar(req, req.body?.ativo ? 'Liberou acesso de colaborador' : 'Bloqueou acesso de colaborador', `${c.nome} · CPF ${cpf}`);
   res.json({ ok: true });
 });
 
 const lerElegibilidade = (l) => Object.fromEntries(R.CODIGOS.map(c => [c, R.lerMarcador(l[c])]));
 
-app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
+app.post('/api/admin/base/colaboradores', exigirAdmin, (req, res) => {
   const linhas = Array.isArray(req.body?.linhas) ? req.body.linhas : [];
   const substituir = req.body?.modo === 'substituir';
   const invalidas = [];
@@ -667,6 +714,7 @@ app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
     if (substituir) db.exec("UPDATE colaboradores SET ativo = 0, atualizado_em = datetime('now')");
     for (const c of validos) upsert.run(c.cpf, c.matricula, c.nome, c.email, c.unidade, c.data_admissao, c.sucedido, c.data_desligamento, c.elegibilidade);
     db.prepare('INSERT INTO importacoes (tipo, modo, linhas, invalidas, por) VALUES (?, ?, ?, ?, ?)').run('colaboradores', substituir ? 'substituir' : 'atualizar', validos.length, invalidas.length, req.rh.nome);
+    auditar(req, 'Importou base de colaboradores', `${substituir ? 'Substituição' : 'Atualização'} · ${validos.length} linha(s) · ${invalidas.length} ignorada(s)`);
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
@@ -676,7 +724,7 @@ app.post('/api/admin/base/colaboradores', exigirRh, (req, res) => {
   res.json({ importados: validos.length, invalidas, ativos });
 });
 
-app.post('/api/admin/base/dependentes', exigirRh, (req, res) => {
+app.post('/api/admin/base/dependentes', exigirAdmin, (req, res) => {
   const linhas = Array.isArray(req.body?.linhas) ? req.body.linhas : [];
   const substituir = req.body?.modo === 'substituir';
   const invalidas = [];
@@ -704,6 +752,7 @@ app.post('/api/admin/base/dependentes', exigirRh, (req, res) => {
     if (substituir) db.exec("UPDATE dependentes SET ativo = 0, atualizado_em = datetime('now')");
     for (const d of validos) upsert.run(d.cpfTitular, d.chave, d.nome, d.cpf, d.parentesco, d.nascimento, d.elegibilidade);
     db.prepare('INSERT INTO importacoes (tipo, modo, linhas, invalidas, por) VALUES (?, ?, ?, ?, ?)').run('dependentes', substituir ? 'substituir' : 'atualizar', validos.length, invalidas.length, req.rh.nome);
+    auditar(req, 'Importou base de dependentes', `${substituir ? 'Substituição' : 'Atualização'} · ${validos.length} linha(s) · ${invalidas.length} ignorada(s)`);
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
@@ -713,7 +762,7 @@ app.post('/api/admin/base/dependentes', exigirRh, (req, res) => {
   res.json({ importados: validos.length, invalidas, ativos });
 });
 
-app.get('/api/admin/importacoes', exigirRh, (_req, res) => {
+app.get('/api/admin/importacoes', exigirAdmin, (_req, res) => {
   res.json(db.prepare('SELECT * FROM importacoes ORDER BY id DESC LIMIT 24').all());
 });
 
@@ -756,13 +805,14 @@ app.get('/api/admin/folha.csv', exigirRh, (req, res) => {
     l.competencia.split('-').reverse().join('/'), (l.valor_aprovado / 100).toFixed(2).replace('.', ','), l.verba,
     (l.data_aprovacao || '').slice(0, 10).split('-').reverse().join('/'), l.aprovado_por, l.protocolo, l.status,
   ].map(campo).join(';'));
+  auditar(req, 'Baixou o arquivo da folha', R.formatarCompetencia(competencia));
   res.setHeader('Content-Disposition', `attachment; filename="reembolsos-folha-${competencia}.csv"`);
   res.type('text/csv; charset=utf-8').send(`﻿${[cab.join(';'), ...linhas].join('\r\n')}\r\n`);
 });
 
 // -- Configurações e usuários do RH --
 
-app.get('/api/admin/configuracoes', exigirRh, (_req, res) => {
+app.get('/api/admin/configuracoes', exigirAdmin, (_req, res) => {
   res.json({
     config: configuracao(),
     beneficios: Object.fromEntries(R.CODIGOS.map(c => [c, { nome: R.BENEFICIOS[c].nome, icone: R.BENEFICIOS[c].icone, escopo: R.BENEFICIOS[c].escopo }])),
@@ -770,7 +820,7 @@ app.get('/api/admin/configuracoes', exigirRh, (_req, res) => {
   });
 });
 
-app.put('/api/admin/configuracoes', exigirRh, (req, res) => {
+app.put('/api/admin/configuracoes', exigirAdmin, (req, res) => {
   const atual = configuracao();
   const e = req.body || {};
   const inteiro = (v, min, max, padrao) => {
@@ -781,7 +831,9 @@ app.put('/api/admin/configuracoes', exigirRh, (req, res) => {
     dia_inicio: inteiro(e.dia_inicio, 1, 28, atual.dia_inicio),
     dia_fim: inteiro(e.dia_fim, 1, 31, atual.dia_fim),
     prazo_documento_dias: inteiro(e.prazo_documento_dias, 1, 365, atual.prazo_documento_dias),
-    excecao_ate: R.normalizarData(e.excecao_ate) || '',
+    excecao_ate: e.excecao_ate === undefined ? atual.excecao_ate : (R.normalizarData(e.excecao_ate) || ''),
+    portal_suspenso: e.portal_suspenso === undefined ? atual.portal_suspenso : Boolean(e.portal_suspenso),
+    mensagem_suspensao: String(e.mensagem_suspensao ?? atual.mensagem_suspensao ?? '').trim().slice(0, 300),
     beneficios: {},
   };
   if (nova.dia_fim < nova.dia_inicio) return res.status(400).json({ erro: 'O dia de fechamento deve ser igual ou posterior ao dia de abertura.' });
@@ -799,42 +851,100 @@ app.put('/api/admin/configuracoes', exigirRh, (req, res) => {
     };
   }
   db.prepare("INSERT INTO configuracoes (chave, valor) VALUES ('portal', ?) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor").run(JSON.stringify(nova));
+  if (nova.portal_suspenso !== atual.portal_suspenso) auditar(req, nova.portal_suspenso ? 'Suspendeu o portal para os colaboradores' : 'Reativou o portal para os colaboradores', nova.mensagem_suspensao || null);
+  if (e.dia_inicio !== undefined || e.beneficios !== undefined) auditar(req, 'Alterou configurações', `Envio: dia ${nova.dia_inicio} a ${nova.dia_fim} · prazo ${nova.prazo_documento_dias} dias${nova.excecao_ate ? ` · exceção até ${nova.excecao_ate}` : ''}`);
   res.json({ ok: true, config: nova });
 });
 
-app.get('/api/admin/usuarios', exigirRh, (_req, res) => {
-  res.json(db.prepare('SELECT id, nome, login, ativo, criado_em FROM usuarios_rh ORDER BY nome').all());
+const PERFIS = { rh: 'RH (análise)', admin: 'Administrador' };
+const adminsAtivos = () => db.prepare("SELECT COUNT(*) AS n FROM usuarios_rh WHERE perfil = 'admin' AND ativo = 1").get().n;
+
+app.get('/api/admin/usuarios', exigirAdmin, (_req, res) => {
+  res.json(db.prepare('SELECT id, nome, login, perfil, ativo, ultimo_acesso, criado_em FROM usuarios_rh ORDER BY ativo DESC, nome').all());
 });
 
-app.post('/api/admin/usuarios', exigirRh, (req, res) => {
+app.post('/api/admin/usuarios', exigirAdmin, (req, res) => {
   const nome = String(req.body?.nome || '').trim();
   const login = String(req.body?.login || '').trim().toLowerCase();
   const senha = String(req.body?.senha || '');
+  const perfil = PERFIS[req.body?.perfil] ? req.body.perfil : 'rh';
   if (!nome || !/^[a-z0-9._@-]{3,60}$/.test(login)) return res.status(400).json({ erro: 'Informe nome e um login válido (letras, números, ponto ou e-mail).' });
   if (senha.length < 8) return res.status(400).json({ erro: 'A senha deve ter pelo menos 8 caracteres.' });
   if (db.prepare('SELECT 1 FROM usuarios_rh WHERE login = ?').get(login)) return res.status(409).json({ erro: 'Já existe um usuário com este login.' });
-  db.prepare('INSERT INTO usuarios_rh (nome, login, senha_hash) VALUES (?, ?, ?)').run(nome, login, gerarHash(senha));
+  db.prepare('INSERT INTO usuarios_rh (nome, login, senha_hash, perfil) VALUES (?, ?, ?, ?)').run(nome, login, gerarHash(senha), perfil);
+  auditar(req, 'Criou usuário', `${nome} (${login}) · ${PERFIS[perfil]}`);
   res.status(201).json({ ok: true });
 });
 
-app.patch('/api/admin/usuarios/:id', exigirRh, (req, res) => {
+app.patch('/api/admin/usuarios/:id', exigirAdmin, (req, res) => {
   const id = Number(req.params.id);
   const u = db.prepare('SELECT * FROM usuarios_rh WHERE id = ?').get(id);
   if (!u) return res.status(404).json({ erro: 'Usuário não encontrado.' });
-  if (req.body?.senha !== undefined) {
-    if (String(req.body.senha).length < 8) return res.status(400).json({ erro: 'A senha deve ter pelo menos 8 caracteres.' });
-    db.prepare('UPDATE usuarios_rh SET senha_hash = ? WHERE id = ?').run(gerarHash(req.body.senha), id);
+  const b = req.body || {};
+  // Nunca deixar o portal sem nenhum administrador ativo.
+  const deixaDeSerAdminAtivo = u.perfil === 'admin' && u.ativo && ((b.ativo !== undefined && !b.ativo) || (b.perfil !== undefined && b.perfil !== 'admin'));
+  if (deixaDeSerAdminAtivo && id === req.rh.id) return res.status(400).json({ erro: 'Você não pode bloquear nem tirar o perfil de administrador do próprio usuário.' });
+  if (deixaDeSerAdminAtivo && adminsAtivos() <= 1) return res.status(400).json({ erro: 'O portal precisa de pelo menos um administrador ativo.' });
+  if (b.senha !== undefined) {
+    if (String(b.senha).length < 8) return res.status(400).json({ erro: 'A senha deve ter pelo menos 8 caracteres.' });
+    db.prepare('UPDATE usuarios_rh SET senha_hash = ? WHERE id = ?').run(gerarHash(b.senha), id);
+    auditar(req, 'Redefiniu a senha de usuário', `${u.nome} (${u.login})`);
   }
-  if (req.body?.ativo !== undefined) {
-    if (id === req.rh.id && !req.body.ativo) return res.status(400).json({ erro: 'Você não pode desativar o próprio usuário.' });
-    db.prepare('UPDATE usuarios_rh SET ativo = ? WHERE id = ?').run(req.body.ativo ? 1 : 0, id);
+  if (b.ativo !== undefined) {
+    db.prepare('UPDATE usuarios_rh SET ativo = ? WHERE id = ?').run(b.ativo ? 1 : 0, id);
+    auditar(req, b.ativo ? 'Desbloqueou usuário' : 'Bloqueou usuário', `${u.nome} (${u.login})`);
+  }
+  if (b.perfil !== undefined && PERFIS[b.perfil] && b.perfil !== u.perfil) {
+    db.prepare('UPDATE usuarios_rh SET perfil = ? WHERE id = ?').run(b.perfil, id);
+    auditar(req, 'Alterou perfil de usuário', `${u.nome} (${u.login}) · ${PERFIS[u.perfil]} → ${PERFIS[b.perfil]}`);
   }
   res.json({ ok: true });
 });
 
+/** Qualquer usuário (RH ou administrador) troca a própria senha, confirmando a atual. */
+app.post('/api/admin/minha-senha', exigirRh, (req, res) => {
+  const u = db.prepare('SELECT * FROM usuarios_rh WHERE id = ?').get(req.rh.id);
+  if (!conferirSenha(String(req.body?.senha_atual || ''), u.senha_hash)) return res.status(400).json({ erro: 'A senha atual não confere.' });
+  const nova = String(req.body?.nova_senha || '');
+  if (nova.length < 8) return res.status(400).json({ erro: 'A nova senha deve ter pelo menos 8 caracteres.' });
+  db.prepare('UPDATE usuarios_rh SET senha_hash = ? WHERE id = ?').run(gerarHash(nova), u.id);
+  auditar(req, 'Trocou a própria senha');
+  res.json({ ok: true });
+});
+
+// -- Administração: visão geral e auditoria --
+
+app.get('/api/admin/visao-geral', exigirAdmin, (_req, res) => {
+  const config = configuracao();
+  const hoje = R.hojeISO();
+  const um = (sql, ...p) => db.prepare(sql).get(...p);
+  res.json({
+    periodo: R.situacaoPeriodo(config, hoje),
+    suspenso: config.portal_suspenso, mensagem_suspensao: config.mensagem_suspensao,
+    colaboradores: um('SELECT SUM(ativo = 1) AS ativos, SUM(ativo = 0) AS bloqueados, COUNT(*) AS total, SUM(ultimo_acesso IS NOT NULL) AS acessaram FROM colaboradores'),
+    dependentes: um('SELECT COUNT(*) AS n FROM dependentes d JOIN colaboradores c ON c.cpf = d.cpf_titular WHERE d.ativo = 1 AND c.ativo = 1').n,
+    usuarios: um("SELECT SUM(ativo = 1 AND perfil = 'rh') AS rh, SUM(ativo = 1 AND perfil = 'admin') AS admin, SUM(ativo = 0) AS bloqueados FROM usuarios_rh"),
+    solicitacoes: um("SELECT COUNT(*) AS total, SUM(status = 'analise') AS analise, SUM(status = 'aprovado') AS aprovadas, SUM(status = 'reprovado') AS reprovadas FROM solicitacoes"),
+    ultima_carga: um('SELECT tipo, modo, linhas, por, em FROM importacoes ORDER BY id DESC LIMIT 1') || null,
+    falhas_login_24h: um("SELECT COUNT(*) AS n FROM auditoria WHERE acao = 'Falha de login' AND em >= datetime('now', '-1 day')").n,
+    ultimas_acoes: db.prepare('SELECT usuario, acao, detalhe, em FROM auditoria ORDER BY id DESC LIMIT 8').all(),
+  });
+});
+
+app.get('/api/admin/auditoria', exigirAdmin, (req, res) => {
+  const where = [];
+  const params = [];
+  const busca = String(req.query.busca || '').trim();
+  if (busca) { where.push('(usuario LIKE ? OR acao LIKE ? OR detalhe LIKE ?)'); params.push(`%${busca}%`, `%${busca}%`, `%${busca}%`); }
+  if (R.normalizarData(req.query.de)) { where.push('date(em) >= ?'); params.push(R.normalizarData(req.query.de)); }
+  if (R.normalizarData(req.query.ate)) { where.push('date(em) <= ?'); params.push(R.normalizarData(req.query.ate)); }
+  res.json(db.prepare(`SELECT * FROM auditoria ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC LIMIT 1000`).all(...params));
+});
+
 // -- Backup do banco (base, solicitações e histórico; os anexos ficam na pasta de dados) --
 
-app.get('/api/admin/backup', exigirRh, (_req, res) => {
+app.get('/api/admin/backup', exigirAdmin, (req, res) => {
+  auditar(req, 'Baixou o backup do banco');
   const arquivo = path.join(DATA_DIR, `backup-${Date.now()}.db`);
   db.exec(`VACUUM INTO '${arquivo.replace(/'/g, "''")}'`);
   res.download(arquivo, `reembolsos-backup-${R.hojeISO()}.db`, () => fs.rm(arquivo, { force: true }, () => {}));

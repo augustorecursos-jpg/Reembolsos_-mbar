@@ -139,3 +139,15 @@
 .filtros-sol .campo { max-width: 220px; }
 .filtros-sol #f-busca { flex: 1; min-width: 220px; max-width: none; }
 .kpi.kpi-valor strong { font-size: 1.3rem; white-space: nowrap; }
+
+/* Áreas internas: RH e Administração */
+a.lateral-item { text-decoration: none; }
+.acoes-rapidas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .6rem; }
+.acoes-rapidas .btn { justify-content: flex-start; }
+.perfil-card p { margin: .5rem 0 0; color: var(--texto); font-size: .9rem; line-height: 1.5; }
+.comentario { display: grid; gap: .5rem; padding: 1rem; border-radius: 12px; border: 1px solid var(--linha); background: #fff; }
+.comentario h4 { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--destaque); }
+.linha-tempo li.interno::before { background: var(--cinza-arte); }
+.tabela tr.alerta-linha td { background: #fff6f5; }
+#acesso-negado .cartao { gap: .9rem; }
+#acesso-negado .btn { width: 100%; }

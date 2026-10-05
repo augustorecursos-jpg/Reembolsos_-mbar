@@ -40,7 +40,15 @@ Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
 | 987.654.321-00 | Não sucedido, com cônjuge, enteada, filho e mãe |
 | 111.444.777-35 | Não sucedida, sem dependentes |
 
-Área do RH (`/admin.html`): usuário `admin`, senha de `ADMIN_PASSWORD` (padrão local `ambar-rh`).
+Áreas internas (link “Área do RH” no topo da home e “Administração” no rodapé):
+
+| Página | Quem acessa | O que faz |
+|---|---|---|
+| `/rh.html` · **Área do RH** | perfis RH e Administrador | Painel, análise das solicitações (aprovar, reprovar, reabrir, comentar — interno ou visível ao colaborador) e arquivo da folha |
+| `/admin.html` · **Administração** | somente Administrador | Base de elegibilidade, colaboradores (bloquear/liberar acesso), usuários e perfis, período e benefícios, suspensão do portal, auditoria e backup |
+
+Usuário inicial: `admin` (perfil Administrador), senha de `ADMIN_PASSWORD` (padrão local `ambar-rh`). Com os dados de demonstração
+há também `rh.teste` / `rh-teste-123` (perfil RH), para ver a diferença entre as áreas.
 
 | Variável | Para quê | Padrão |
 |---|---|---|
@@ -92,7 +100,11 @@ da folha não mudar quando a base do mês seguinte for importada. Dependentes s�
 ## Segurança
 
 - Colaborador: CPF (como na Trilha DHO), sessão de 8 h, limite de tentativas com falha por IP.
-- RH: usuários individuais (senha com scrypt), cadastrados em Configurações — o nome de quem analisou fica registrado.
+- Usuários internos individuais (senha com scrypt) com dois perfis: **RH** (análise) e **Administrador** (controle total).
+  Bloqueios e mudanças de perfil valem na hora (a sessão é conferida a cada ação); o portal nunca fica sem administrador ativo.
+- **Auditoria**: logins (inclusive tentativas com senha errada), decisões, comentários, importações, bloqueios, alterações de
+  usuários e configurações, backups e downloads do arquivo da folha, com data, usuário e IP.
+- O administrador pode **suspender o portal** para todos os colaboradores (manutenção), com mensagem exibida na home.
 - Documentos anexados ficam fora da pasta pública e só são entregues ao próprio colaborador ou ao RH.
 - Botão de backup do banco em Configurações; os anexos ficam em `DATA_DIR/anexos` (incluídos no snapshot do disco).
 

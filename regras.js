@@ -98,6 +98,8 @@ function configuracaoPadrao() {
     dia_fim: 10,
     prazo_documento_dias: 60,
     excecao_ate: '', // AAAA-MM-DD: mantém o portal aberto excepcionalmente até essa data
+    portal_suspenso: false, // bloqueia o acesso de todos os colaboradores (ex.: manutenção)
+    mensagem_suspensao: '',
     beneficios: Object.fromEntries(CODIGOS.map(c => {
       const b = BENEFICIOS[c];
       return [c, {

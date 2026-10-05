@@ -70,3 +70,4 @@
   .filtros, .filtros .campo { width: 100%; }
 }
 .login-cartao .login-marca { margin: 0 auto .4rem; }
+.login-cartao a.btn { color: #fff; font-size: inherit; }

@@ -113,3 +113,7 @@ body.home { background: #fff; overflow-x: hidden; }
   .acesso-linha { flex-direction: column; }
   .logo-produto .produto { font-size: .95rem; }
 }
+.rodape-admin { margin-left: auto; color: #8fa6b8; font-size: .82rem; }
+.hero-texto .alerta { max-width: 520px; margin: 0 0 1rem; }
+.alerta { display: flex; gap: .7rem; align-items: flex-start; padding: .8rem 1rem; border-radius: 10px; font-size: .92rem; line-height: 1.45; }
+.alerta.erro { background: #fdecea; color: #8a2419; font-weight: 600; }

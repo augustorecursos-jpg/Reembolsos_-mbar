@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Área do RH · Portal de Reembolsos</title>
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/portal.css">
+</head>
+<body class="app">
+
+  <!-- Login (mesmo usuário e senha nas duas áreas internas) -->
+  <div class="login" id="tela-login">
+    <form class="cartao login-cartao" id="form-login">
+      <span class="logo-produto login-marca"><span class="logo"><b>Âmbar</b><small>ENERGIA</small></span><span class="produto">Reembolsos</span></span>
+      <h1>Área do RH</h1>
+      <p>Análise e aprovação das solicitações de reembolso</p>
+      <label for="login">Usuário</label>
+      <input id="login" class="campo" autocomplete="username" required>
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" class="campo" autocomplete="current-password" required>
+      <button class="btn btn-laranja" type="submit">Entrar</button>
+      <a href="index.html">← Voltar ao portal</a>
+    </form>
+  </div>
+
+  <!-- Usuário sem permissão para esta área -->
+  <div class="login" id="acesso-negado" hidden>
+    <div class="cartao login-cartao">
+      <span class="logo-produto login-marca"><span class="logo"><b>Âmbar</b><small>ENERGIA</small></span><span class="produto">Reembolsos</span></span>
+      <h1>Acesso restrito</h1>
+      <p></p>
+      <a class="btn btn-laranja" href="rh.html">Ir para a Área do RH</a>
+      <button class="btn btn-claro" type="button" data-sair>Entrar com outro usuário</button>
+    </div>
+  </div>
+
+  <aside class="lateral" id="lateral" hidden>
+    <a class="lateral-marca logo-produto claro" href="index.html"><span class="logo claro"><b>Âmbar</b><small>ENERGIA</small></span><span class="produto">Reembolsos</span></a>
+    <p class="lateral-grupo">ANÁLISE</p>
+    <button class="lateral-item ativo" data-aba="painel"><span class="ic">📈</span>Painel</button>
+    <button class="lateral-item" data-aba="solicitacoes"><span class="ic">🧾</span>Solicitações<span class="qtd" id="qtd-pendentes" hidden></span></button>
+    <button class="lateral-item" data-aba="folha"><span class="ic">💰</span>Folha de pagamento</button>
+    <div data-so-admin hidden>
+      <p class="lateral-grupo">ADMINISTRAÇÃO</p>
+      <a class="lateral-item" href="admin.html"><span class="ic">🛡️</span>Ir para a Administração</a>
+    </div>
+    <div class="lateral-rodape">
+      <button class="lateral-item" type="button" data-minha-senha><span class="ic">🔑</span>Minha senha</button>
+      <button class="lateral-item" type="button" data-sair><span class="ic">⎋</span>Sair</button>
+    </div>
+  </aside>
+
+  <div class="principal" id="principal" hidden>
+    <header class="barra">
+      <button class="btn-menu" id="btn-menu" aria-label="Abrir menu">☰</button>
+      <div class="barra-titulo">
+        <small>PORTAL DE REEMBOLSOS</small>
+        <strong>Área do RH</strong>
+      </div>
+      <div class="barra-usuario">
+        <span class="barra-nome"><strong id="nome-usuario">…</strong><small id="perfil-usuario"></small></span>
+        <a class="btn btn-claro btn-sm" href="index.html">Ver portal</a>
+      </div>
+    </header>
+
+    <main class="conteudo">
+      <!-- Painel -->
+      <section data-painel="painel">
+        <div class="ind-cab">
+          <h1 class="titulo-pagina">Painel da <em>competência</em></h1>
+          <div class="filtros"><select class="campo" id="painel-comp" aria-label="Competência"></select></div>
+        </div>
+        <div id="painel-periodo"></div>
+        <div class="kpis" id="painel-kpis"></div>
+        <div class="ind-grade">
+          <section class="cartao">
+            <h3>Valor aprovado por benefício</h3>
+            <div class="grafico-barras" id="painel-beneficios"></div>
+          </section>
+          <section class="cartao">
+            <h3>Solicitações por benefício</h3>
+            <div class="tabela-wrap"><table class="tabela" id="painel-tab-beneficios"></table></div>
+          </section>
+        </div>
+        <section class="cartao" style="margin-top:1.4rem">
+          <h3>Por unidade</h3>
+          <div class="tabela-wrap"><table class="tabela" id="painel-unidades"></table></div>
+        </section>
+      </section>
+
+      <!-- Solicitações -->
+      <section data-painel="solicitacoes" hidden>
+        <div class="ind-cab">
+          <h1 class="titulo-pagina">Análise de <em>solicitações</em></h1>
+        </div>
+        <div class="cartao">
+          <div class="filtros filtros-sol" style="margin-left:0">
+            <select class="campo" id="f-comp" aria-label="Competência"><option value="">Todas as competências</option></select>
+            <select class="campo" id="f-status" aria-label="Status">
+              <option value="">Todos os status</option><option value="analise" selected>Em análise</option><option value="aprovado">Aprovado</option><option value="reprovado">Reprovado</option>
+            </select>
+            <select class="campo" id="f-beneficio" aria-label="Benefício"><option value="">Todos os benefícios</option></select>
+            <select class="campo" id="f-unidade" aria-label="Unidade"><option value="">Todas as unidades</option></select>
+            <label class="check">De <input class="campo" type="date" id="f-de" aria-label="Enviadas a partir de"></label>
+            <label class="check">até <input class="campo" type="date" id="f-ate" aria-label="Enviadas até"></label>
+            <input class="campo" id="f-busca" placeholder="Nome, CPF, matrícula, protocolo…" aria-label="Buscar">
+          </div>
+          <div class="cab-tabela" style="margin:1rem 0 .4rem">
+            <h3>🧾 Solicitações <small id="resumo-sol"></small></h3>
+            <div class="filtros"><button class="btn btn-claro btn-sm" id="exportar-sol">⬇ Exportar Excel</button></div>
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-sol"></table></div>
+        </div>
+      </section>
+
+      <!-- Folha -->
+      <section data-painel="folha" hidden>
+        <div class="ind-cab">
+          <h1 class="titulo-pagina">Relatório para a <em>folha</em></h1>
+          <div class="filtros"><select class="campo" id="folha-comp" aria-label="Competência"></select></div>
+        </div>
+        <div id="folha-aviso"></div>
+        <div class="cartao">
+          <div class="cab-tabela">
+            <h3>💰 Solicitações aprovadas <small id="folha-resumo"></small></h3>
+            <div class="filtros">
+              <a class="btn btn-laranja btn-sm" id="folha-csv" href="#">⬇ CSV para importação</a>
+              <button class="btn btn-claro btn-sm" id="folha-xlsx">⬇ Excel</button>
+            </div>
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-folha"></table></div>
+          <p class="q-dica" style="margin:.8rem 0 0">A verba de folha de cada benefício é definida em Configurações. O CSV usa “;” como separador e vírgula nos valores (padrão do Excel em português).</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Análise da solicitação -->
+  <dialog class="modal modal-det" id="modal-analise">
+    <header>
+      <div><small id="an-protocolo">SOLICITAÇÃO</small><h3 id="an-titulo">Solicitação</h3></div>
+      <button type="button" class="btn btn-claro btn-sm" data-fechar aria-label="Fechar">✕</button>
+    </header>
+    <div class="det-corpo" id="an-corpo"></div>
+  </dialog>
+  <!-- Troca da própria senha -->
+  <dialog class="modal qr-modal" id="modal-senha">
+    <form>
+      <header>
+        <div><small>SEGURANÇA</small><h3>Trocar minha senha</h3></div>
+        <button type="button" class="btn btn-claro btn-sm" data-fechar aria-label="Fechar">✕</button>
+      </header>
+      <div class="det-corpo">
+        <label class="rotulo">Senha atual<input class="campo" type="password" name="senha_atual" autocomplete="current-password" required></label>
+        <label class="rotulo">Nova senha <small>(mínimo 8 caracteres)</small><input class="campo" type="password" name="nova_senha" minlength="8" autocomplete="new-password" required></label>
+        <label class="rotulo">Confirme a nova senha<input class="campo" type="password" name="confirmar" minlength="8" autocomplete="new-password" required></label>
+      </div>
+      <footer><span></span><button class="btn btn-laranja" type="submit">Salvar nova senha</button></footer>
+    </form>
+  </dialog>
+
+  <div class="dica-grafico" id="dica-grafico" role="tooltip" hidden></div>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="js/comum.js"></script>
+  <script src="js/gestao-comum.js"></script>
+  <script src="js/rh.js"></script>
+</body>
+</html>
