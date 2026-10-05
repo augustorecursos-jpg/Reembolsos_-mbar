@@ -1,0 +1,19 @@
+/* Home do Portal de Reembolsos: complementos ao visual da home da Trilha */
+
+/* Cartão de acesso com dois campos (CPF e matrícula) lado a lado e o botão abaixo */
+.cartao-acesso-duplo .cartao-acesso-corpo { grid-template-columns: 1fr 1fr; }
+.cartao-acesso-duplo .cartao-acesso-corpo label { grid-column: auto; display: grid; gap: .35rem; }
+.cartao-acesso-duplo .cartao-acesso-corpo .btn { grid-column: 1 / -1; }
+
+.grade-beneficios { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.2rem; }
+.beneficio-card { position: relative; overflow: hidden; display: grid; gap: .7rem; align-content: start; padding: 1.5rem 1.4rem; border-radius: var(--raio); border: 1px solid var(--linha); background: #fff; }
+.beneficio-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--marinho), var(--laranja)); }
+.beneficio-card h3 { font-size: 1.05rem; }
+.beneficio-card .valor { font-family: var(--fonte-titulo); font-weight: 800; font-size: 1.35rem; color: var(--laranja); line-height: 1.2; }
+.beneficio-card .valor small { display: block; font-family: var(--fonte); font-weight: 600; font-size: .78rem; color: var(--texto-suave); }
+.beneficio-card p { margin: 0; color: var(--texto-suave); font-size: .9rem; line-height: 1.5; }
+.beneficio-card .docs { font-size: .82rem; color: var(--marinho); font-weight: 700; }
+
+@media (max-width: 560px) {
+  .cartao-acesso-duplo .cartao-acesso-corpo { grid-template-columns: 1fr; }
+}

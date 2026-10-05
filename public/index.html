@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal de Reembolsos · Âmbar Energia</title>
+  <meta name="description" content="Solicitações de reembolso de medicamento, educacional, creche/babá e óculos · RH Âmbar Energia">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <link rel="stylesheet" href="css/portal-landing.css">
+</head>
+<body class="landing">
+
+  <header class="topo">
+    <a class="logo" href="#inicio" aria-label="Âmbar Energia"><b>Âmbar</b><small>ENERGIA</small></a>
+    <span class="marcas-sep" aria-hidden="true"></span>
+    <div class="marcas" aria-label="Empresas do grupo">
+      <img src="img/marcas/green-cargo.png" alt="Green Cargo" width="170" height="59">
+      <img src="img/marcas/fluxus.png" alt="Fluxus" width="205" height="46">
+      <img src="img/marcas/mgas.png" alt="MGAS" width="163" height="54">
+      <img src="img/marcas/logas.png" alt="Logás" width="206" height="58">
+    </div>
+    <nav class="menu" aria-label="Seções">
+      <a href="#beneficios">Benefícios</a>
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#prazos">Prazos</a>
+      <a href="#duvidas">Dúvidas</a>
+    </nav>
+    <a class="btn btn-claro btn-sm" href="admin.html">Área do RH</a>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <figure class="hero-foto">
+        <img src="img/equipe-ambar.jpg" width="1998" height="1125"
+             alt="Colaboradores da Âmbar Energia sorrindo em frente ao símbolo da marca">
+      </figure>
+
+      <div class="hero-texto">
+        <span class="sobretitulo">PORTAL DE REEMBOLSOS · RH</span>
+        <h1>Seus reembolsos <span class="linha">em um <em>só lugar.</em></span></h1>
+        <div class="hero-jornada">
+          <h2>Simples, rápido e sem e-mail</h2>
+          <p>Envie suas solicitações de reembolso de <strong>medicamento, educacional, creche/babá e óculos</strong>
+            com os documentos anexados, direto pelo portal.</p>
+          <p>Você vê apenas os benefícios e dependentes aos quais tem direito, acompanha o saldo de cada um e
+            consulta o status da análise do RH a qualquer momento.</p>
+        </div>
+
+        <form class="cartao-acesso cartao-acesso-duplo" id="acesso" novalidate>
+          <div class="cartao-acesso-topo">
+            <svg viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60C120 40 250 0 400 8V0H0Z" fill="#164d74"/><path d="M0 52C130 34 260 2 400 10" fill="none" stroke="#ec6b24" stroke-width="2"/></svg>
+            <h2>Acesse o portal</h2>
+            <p id="acesso-periodo">Informe seu CPF e sua matrícula</p>
+          </div>
+          <div class="cartao-acesso-corpo">
+            <label>CPF
+              <input id="cpf" name="cpf" class="campo" inputmode="numeric" autocomplete="off"
+                     placeholder="000.000.000-00" maxlength="14" aria-describedby="acesso-msg">
+            </label>
+            <label>Matrícula
+              <input id="matricula" name="matricula" class="campo" autocomplete="off" placeholder="Sua matrícula" maxlength="20">
+            </label>
+            <button class="btn btn-laranja" type="submit">Acessar portal →</button>
+            <p class="acesso-msg" id="acesso-msg" role="alert" aria-live="assertive"></p>
+            <small>O acesso é liberado para colaboradores da base de elegibilidade do RH.</small>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="secao" id="beneficios">
+      <div class="secao-cab">
+        <span class="sobretitulo">BENEFÍCIOS</span>
+        <h2>O que pode ser reembolsado</h2>
+      </div>
+      <div class="grade-beneficios" id="grade-beneficios">
+        <p class="vazio">Carregando os benefícios…</p>
+      </div>
+    </section>
+
+    <section class="secao secao-alt" id="como-funciona">
+      <div class="secao-cab">
+        <span class="sobretitulo">COMO FUNCIONA</span>
+        <h2>Quatro passos simples</h2>
+      </div>
+      <ol class="passos">
+        <li><b>1</b><h3>Entre com CPF e matrícula</h3><p>Seus dados cadastrais já vêm preenchidos pela base do RH.</p></li>
+        <li><b>2</b><h3>Escolha benefício e beneficiário</h3><p>Só aparecem os benefícios e dependentes elegíveis, com o saldo disponível.</p></li>
+        <li><b>3</b><h3>Informe a despesa e anexe</h3><p>Data e valor do documento, mais os anexos obrigatórios em PDF ou foto.</p></li>
+        <li><b>4</b><h3>Acompanhe a análise</h3><p>Consulte o status no portal e receba a confirmação por e-mail.</p></li>
+      </ol>
+    </section>
+
+    <section class="secao" id="prazos">
+      <div class="secao-cab">
+        <span class="sobretitulo">PRAZOS</span>
+        <h2>Calendário mensal</h2>
+      </div>
+      <div class="pilares">
+        <article><span class="pilar-ic">📅</span><h3>Dia <span data-dia-inicio>01</span> ao dia <span data-dia-fim>10</span></h3><p>Período para enviar novas solicitações. Fora dele o portal fica disponível apenas para consulta.</p></article>
+        <article><span class="pilar-ic">🧾</span><h3>Até <span data-prazo>60</span> dias</h3><p>Prazo contado da data de emissão da nota fiscal ou do comprovante de pagamento.</p></article>
+        <article><span class="pilar-ic">💰</span><h3>Folha de pagamento</h3><p>Após o fechamento, as solicitações aprovadas são enviadas para pagamento na folha.</p></article>
+      </div>
+    </section>
+
+    <section class="secao secao-alt" id="duvidas">
+      <div class="secao-cab">
+        <span class="sobretitulo">DÚVIDAS</span>
+        <h2>Perguntas frequentes</h2>
+      </div>
+      <div class="faq">
+        <details open><summary>Quem pode acessar?</summary><p>Colaboradores da base de elegibilidade atualizada mensalmente pelo RH. Se o acesso for negado, procure o time de RH para verificar seu cadastro.</p></details>
+        <details><summary>Não encontro um dependente ou um benefício. O que fazer?</summary><p>O portal mostra apenas os benefícios e dependentes elegíveis, conforme as regras de cada benefício e a base do RH. Se houver divergência, procure o RH para atualizar a base.</p></details>
+        <details><summary>Quais documentos preciso anexar?</summary><p>Medicamento e óculos: receita médica e nota fiscal. Educacional e creche/babá: boleto ou recibo e comprovante de pagamento. Arquivos em PDF, JPG ou PNG de até 10 MB.</p></details>
+        <details><summary>Como funciona o limite?</summary><p>Medicamento: limite mensal compartilhado pelo grupo familiar. Educacional e creche/babá: limite mensal por dependente. Óculos: limite por beneficiário a cada 18 meses. O saldo disponível aparece antes do envio.</p></details>
+        <details><summary>Minha solicitação foi reprovada. Onde vejo o motivo?</summary><p>Em “Minhas solicitações”, junto com o status, aparece a justificativa registrada pelo RH.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <svg class="onda onda-rodape" viewBox="0 0 420 150" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M420 0C300 6 220 100 60 150H100C250 110 320 24 420 18Z" fill="#ec6b24"/>
+      <path d="M420 18C320 24 250 110 100 150H420Z" fill="#164d74"/>
+      <path d="M420 70C340 84 270 130 210 150" fill="none" stroke="#fff" stroke-width="1" opacity=".6"/>
+    </svg>
+    <a class="logo claro" href="#inicio"><b>Âmbar</b><small>ENERGIA</small></a>
+    <span>Recursos Humanos · Portal de Reembolsos</span>
+  </footer>
+
+  <script src="js/comum.js"></script>
+  <script src="js/landing.js"></script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+/* Home pública (tema claro institucional) */
+body.landing { background: #fff; overflow-x: hidden; }
+
+.topo {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 1.6rem;
+  padding: .9rem clamp(16px, 5vw, 80px); background: rgba(255, 255, 255, .95); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--linha);
+}
+/* Logos das empresas do grupo, ao lado da marca Âmbar */
+.marcas-sep { width: 1px; height: 34px; background: var(--linha); flex-shrink: 0; }
+.marcas { display: flex; align-items: center; gap: 1.3rem; }
+.marcas img { height: 26px; width: auto; display: block; }
+.menu { display: flex; gap: 1.3rem; margin-left: auto; }
+.menu a { text-decoration: none; font-weight: 600; font-size: .92rem; color: var(--texto-suave); }
+.menu a:hover { color: var(--laranja); }
+
+.sobretitulo { font-family: var(--fonte-titulo); font-size: .74rem; font-weight: 700; letter-spacing: .16em; color: var(--laranja-claro); }
+
+/* Hero: foto da equipe como fundo, degradê azul-marinho à esquerda para o texto */
+.hero {
+  position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0, 520px);
+  align-content: center; min-height: calc(100vh - 66px); padding: 2.5rem clamp(16px, 9vw, 160px) 3.5rem;
+  background: var(--marinho);
+}
+.hero-foto { position: absolute; top: 0; right: 0; bottom: 0; width: 76%; margin: 0; z-index: -1; }
+.hero-foto img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 100% 0; }
+.hero-foto::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(14, 59, 92, 1) 0%, rgba(14, 59, 92, .92) 14%, rgba(14, 59, 92, .45) 27%, rgba(14, 59, 92, 0) 38%),
+              linear-gradient(0deg, rgba(14, 59, 92, .55) 0%, rgba(14, 59, 92, 0) 30%);
+}
+.hero h1 { color: #fff; font-size: clamp(2rem, 3.4vw, 3.1rem); line-height: 1.14; font-weight: 800; margin: .9rem 0 1.1rem; letter-spacing: -.02em; }
+.hero h1 .linha { display: block; white-space: nowrap; }
+.hero h1 em { font-style: normal; color: var(--laranja); }
+.hero-jornada { max-width: 470px; margin: 0 0 1.4rem; padding-left: 1rem; border-left: 3px solid var(--laranja); }
+.hero-jornada h2 { color: #fff; font-size: 1.15rem; margin: 0 0 .5rem; }
+.hero-jornada p { font-size: .9rem; line-height: 1.55; color: #dce7f0; margin: 0 0 .45rem; }
+.hero-jornada strong { color: #fff; }
+.hero-texto > p { font-size: 1.05rem; line-height: 1.65; color: #dce7f0; max-width: 520px; margin: 0 0 1.6rem; }
+
+/* Cartão de acesso compacto: campo de CPF e botão lado a lado */
+.cartao-acesso { max-width: 470px; background: #fff; border-radius: 18px; box-shadow: 0 30px 60px -28px rgba(0, 0, 0, .5); overflow: hidden; border: 1px solid rgba(255, 255, 255, .5); }
+.cartao-acesso-topo { position: relative; background: var(--marinho); color: #fff; padding: 1rem 1.5rem 1.6rem; }
+.cartao-acesso-topo svg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 34px; transform: scaleY(-1); }
+.cartao-acesso-topo h2 { color: #fff; font-size: 1.35rem; }
+.cartao-acesso-topo p { margin: .3rem 0 0; color: #b9cddd; font-size: .9rem; }
+.cartao-acesso-corpo { padding: 1rem 1.5rem 1.2rem; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: .65rem; }
+.cartao-acesso-corpo label, .cartao-acesso-corpo .acesso-msg, .cartao-acesso-corpo small { grid-column: 1 / -1; }
+.cartao-acesso-corpo label { font-weight: 700; font-size: .85rem; color: var(--marinho); }
+.cartao-acesso-corpo .campo { font-size: 1.05rem; letter-spacing: .04em; padding: .85rem 1rem; }
+.cartao-acesso-corpo .btn { padding: .9rem 1.1rem; font-size: 1rem; white-space: nowrap; }
+.cartao-acesso-corpo small { color: var(--texto-suave); font-size: .8rem; }
+.acesso-msg { min-height: 1.3em; margin: 0; font-weight: 700; font-size: .92rem; }
+.acesso-msg.erro { color: var(--vermelho); background: #fdecea; border-radius: 8px; padding: .6rem .8rem; }
+.acesso-msg.ok { color: var(--verde); }
+.cartao-acesso.tremer { animation: tremer .4s; }
+@keyframes tremer { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+/* Seções */
+.secao { position: relative; padding: 5rem clamp(16px, 7vw, 120px); }
+.secao-alt { background: var(--fundo); }
+.secao-cab { margin-bottom: 2.4rem; }
+.secao-cab h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); margin-top: .5rem; }
+
+.pilares { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; }
+.pilares article { padding: 1.8rem; border-radius: var(--raio); border: 1px solid var(--linha); background: #fff; border-top: 4px solid var(--marinho); }
+.pilar-ic { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 12px; background: var(--laranja-suave); font-size: 1.5rem; }
+.pilares h3 { font-size: 1.1rem; margin: 1rem 0 .4rem; }
+.pilares p { margin: 0; color: var(--texto-suave); line-height: 1.6; }
+
+.passos { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4rem; position: relative; }
+.passos::before { content: ''; position: absolute; top: 22px; left: 22px; right: 22px; height: 2px; background: repeating-linear-gradient(90deg, var(--laranja) 0 8px, transparent 8px 14px); }
+.passos li { position: relative; }
+.passos b { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--marinho); color: #fff; font-family: var(--fonte-titulo); box-shadow: 0 0 0 6px var(--fundo); }
+.passos h3 { font-size: 1.02rem; margin: 1rem 0 .4rem; }
+.passos p { margin: 0; color: var(--texto-suave); line-height: 1.55; font-size: .94rem; }
+
+.grade-temas { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.tema-card { display: flex; gap: 1rem; align-items: center; padding: 1.1rem 1.2rem; border-radius: var(--raio); border: 1px solid var(--linha); background: #fff; }
+.tema-card .ic { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: var(--fundo); font-size: 1.3rem; }
+.tema-card h3 { font-size: .98rem; }
+.tema-card small { color: var(--texto-suave); }
+.vazio { color: var(--texto-suave); }
+
+.faq { display: grid; gap: .8rem; max-width: 860px; }
+.faq details { background: #fff; border: 1px solid var(--linha); border-radius: 12px; padding: 1rem 1.2rem; }
+.faq summary { cursor: pointer; font-weight: 700; color: var(--marinho); }
+.faq p { color: var(--texto-suave); line-height: 1.6; margin: .7rem 0 0; }
+
+.rodape { position: relative; overflow: hidden; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; padding: 2.4rem clamp(16px, 7vw, 120px); background: var(--marinho); color: #b9cddd; font-size: .9rem; }
+.onda-rodape { right: 0; bottom: 0; width: min(420px, 55vw); height: 100%; }
+.rodape > :not(svg) { position: relative; }
+
+/* Notebooks menores: o menu de seções sai do topo e o texto fica mais estreito para não cobrir os rostos */
+@media (max-width: 1240px) {
+  .menu { display: none; }
+  .topo .btn { margin-left: auto; }
+}
+@media (max-width: 1320px) {
+  .hero { grid-template-columns: minmax(0, 460px); padding-left: clamp(16px, 6vw, 160px); }
+  .hero h1 { font-size: clamp(2rem, 3.2vw, 2.6rem); }
+}
+
+/* Tablet e celular: a foto vira uma faixa no topo e o conteúdo vem logo abaixo */
+@media (max-width: 1100px) {
+  .hero { grid-template-columns: minmax(0, 560px); justify-content: center; min-height: 0; padding: 0 clamp(16px, 5vw, 48px) 3rem; }
+  .hero-foto { position: relative; justify-self: center; width: 100vw; height: clamp(300px, 56vw, 500px); margin: 0 0 -3.5rem; z-index: 0; }
+  .hero-foto img { object-position: 78% 0; }
+  .hero-foto::after {
+    background: linear-gradient(0deg, rgba(14, 59, 92, 1) 0%, rgba(14, 59, 92, .6) 18%, rgba(14, 59, 92, 0) 45%),
+                linear-gradient(90deg, rgba(14, 59, 92, .75) 0%, rgba(14, 59, 92, 0) 32%);
+  }
+  .hero-texto { position: relative; z-index: 1; }
+  .pilares, .passos { grid-template-columns: 1fr 1fr; }
+  .passos::before { display: none; }
+}
+@media (max-width: 760px) {
+  .topo { flex-wrap: wrap; row-gap: .7rem; padding-block: .7rem; }
+  .marcas-sep { display: none; }
+  .marcas { order: 5; flex-basis: 100%; justify-content: space-between; gap: .6rem; padding-top: .6rem; border-top: 1px solid var(--linha); }
+  .marcas img { height: 18px; }
+}
+@media (max-width: 560px) {
+  .pilares, .passos { grid-template-columns: 1fr; }
+  .hero h1 { font-size: clamp(1.7rem, 8vw, 2.1rem); }
+  .cartao-acesso-corpo { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,141 @@
+/* Componentes próprios do Portal de Reembolsos (sobre o visual da Trilha DHO) */
+
+.etiqueta.nao { background: #fdecea; color: #b42d20; }
+.etiqueta.analise { background: var(--laranja-suave); color: #b54d12; }
+
+/* Faixa de situação do período (aberto / fechado) */
+.faixa-periodo { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .85rem 1.1rem; border-radius: 12px; font-size: .92rem; margin-bottom: 1.2rem; border: 1px solid var(--linha); background: #fff; }
+.faixa-periodo .ponto { width: 10px; height: 10px; border-radius: 50%; background: var(--verde); box-shadow: 0 0 0 4px rgba(31, 157, 87, .18); flex-shrink: 0; }
+.faixa-periodo.fechado .ponto { background: var(--vermelho); box-shadow: 0 0 0 4px rgba(217, 58, 43, .16); }
+.faixa-periodo strong { color: var(--marinho); }
+
+/* Saldo dos benefícios */
+.saldo { display: grid; gap: .35rem; font-size: .82rem; color: var(--texto-suave); }
+.saldo-topo { display: flex; justify-content: space-between; gap: .6rem; }
+.saldo-topo strong { color: var(--marinho); font-size: .95rem; }
+.barra-prog.saldo-zero i { background: var(--vermelho); }
+.tema .regra { font-size: .82rem; color: var(--texto-suave); line-height: 1.45; margin: 0; }
+.beneficiarios-mini { display: grid; gap: .55rem; }
+.beneficiarios-mini > div { display: grid; gap: .3rem; }
+.beneficiarios-mini span { display: flex; justify-content: space-between; gap: .5rem; font-size: .8rem; }
+.beneficiarios-mini b { color: var(--marinho); font-weight: 700; }
+
+/* Lista de solicitações */
+.lista-sol { display: grid; gap: .6rem; }
+.sol-item {
+  display: grid; grid-template-columns: auto 1fr auto; gap: .9rem; align-items: center; width: 100%; text-align: left;
+  padding: .85rem 1rem; border-radius: 12px; border: 1px solid var(--linha); background: #fff; color: var(--texto);
+  transition: border-color .15s, box-shadow .15s;
+}
+.sol-item:hover { border-color: rgba(236, 107, 36, .6); box-shadow: 0 6px 18px -12px rgba(14, 59, 92, .45); }
+.sol-item .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--fundo); font-size: 1.15rem; }
+.sol-item strong { color: var(--marinho); display: block; }
+.sol-item small { color: var(--texto-suave); font-size: .8rem; }
+.sol-item .valor { text-align: right; display: grid; gap: .3rem; justify-items: end; font-weight: 800; color: var(--marinho); }
+.sol-item .obs { grid-column: 2 / -1; margin: 0; padding: .55rem .75rem; border-radius: 8px; background: #fdecea; color: #8a2419; font-size: .85rem; }
+.vazio-bloco { text-align: center; color: var(--texto-suave); font-size: .9rem; padding: 1.6rem .5rem; }
+.vazio-bloco span { display: block; font-size: 2rem; margin-bottom: .4rem; opacity: .6; }
+
+/* Formulário de nova solicitação (passos numerados) */
+.form-sol { display: grid; gap: 1.1rem; max-width: 980px; }
+.passo { position: relative; margin: 0; padding: 1.3rem 1.4rem 1.4rem 4.2rem; border-radius: var(--raio); background: #fff; border: 1px solid var(--linha); }
+.passo > legend { float: left; width: 100%; padding: 0; margin-bottom: .9rem; font-family: var(--fonte-titulo); font-weight: 700; color: var(--marinho); font-size: 1rem; }
+.passo > legend small { display: block; font-family: var(--fonte); font-weight: 400; color: var(--texto-suave); font-size: .82rem; margin-top: .15rem; }
+.passo > legend + * { clear: both; }
+.passo-num { position: absolute; left: 1.2rem; top: 1.2rem; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--marinho); color: #fff; font-family: var(--fonte-titulo); font-weight: 700; font-size: .9rem; }
+.passo.desabilitado { opacity: .55; }
+.passo.desabilitado .passo-num { background: var(--cinza-arte); }
+
+.opcoes-cartao { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .7rem; }
+.opcao-cartao { position: relative; cursor: pointer; }
+.opcao-cartao input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.opcao-cartao > span {
+  display: flex; align-items: center; gap: .7rem; height: 100%; padding: .8rem .9rem; border-radius: 12px; border: 1.5px solid var(--linha);
+  background: #fff; transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.opcao-cartao .ic { width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; background: var(--fundo); font-size: 1.1rem; }
+.opcao-cartao strong { display: block; color: var(--marinho); font-size: .92rem; line-height: 1.25; }
+.opcao-cartao small { display: block; color: var(--texto-suave); font-size: .78rem; margin-top: .1rem; }
+.opcao-cartao input:checked + span { border-color: var(--laranja); background: var(--laranja-suave); box-shadow: 0 0 0 3px rgba(236, 107, 36, .15); }
+.opcao-cartao input:focus-visible + span { outline: 2px solid var(--marinho); outline-offset: 2px; }
+.opcao-cartao input:disabled + span { opacity: .55; cursor: not-allowed; }
+
+.grade-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .9rem; }
+.rotulo { display: grid; gap: .35rem; font-weight: 700; font-size: .85rem; color: var(--marinho); }
+.rotulo small { font-weight: 400; color: var(--texto-suave); font-size: .78rem; }
+.rotulo.largo { grid-column: 1 / -1; }
+
+.anexos-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .8rem; }
+.anexo-campo {
+  position: relative; display: grid; gap: .3rem; padding: 1rem; border-radius: 12px; border: 1.5px dashed var(--cinza-arte);
+  background: var(--fundo); cursor: pointer; transition: border-color .15s, background .15s;
+}
+.anexo-campo:hover, .anexo-campo.arrastando { border-color: var(--laranja); background: var(--laranja-suave); }
+.anexo-campo.ok { border-style: solid; border-color: var(--verde); background: #eef9f2; }
+.anexo-campo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.anexo-campo strong { color: var(--marinho); font-size: .9rem; }
+.anexo-campo strong em { font-style: normal; color: var(--vermelho); }
+.anexo-campo small { color: var(--texto-suave); font-size: .78rem; word-break: break-word; }
+
+.alerta { display: flex; gap: .7rem; align-items: flex-start; padding: .8rem 1rem; border-radius: 10px; font-size: .9rem; line-height: 1.45; margin: .8rem 0 0; }
+.alerta.info { background: #eaf2f8; color: var(--marinho); }
+.alerta.erro { background: #fdecea; color: #8a2419; font-weight: 600; }
+.alerta.aviso { background: var(--laranja-suave); color: #8f3f0e; }
+.alerta.ok { background: #e3f5eb; color: #146b3a; font-weight: 600; }
+
+.dados-cad { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .6rem 1.2rem; margin: 0; }
+.dados-cad div { display: grid; gap: .1rem; }
+.dados-cad dt { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-suave); font-weight: 700; }
+.dados-cad dd { margin: 0; color: var(--marinho); font-weight: 700; font-size: .92rem; }
+
+.declaracao { display: flex; gap: .6rem; align-items: flex-start; font-size: .9rem; line-height: 1.45; }
+.declaracao input { margin-top: .2rem; width: 18px; height: 18px; accent-color: var(--marinho); flex-shrink: 0; }
+.rodape-form { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.rodape-form .resumo { font-size: .9rem; color: var(--texto-suave); }
+.rodape-form .resumo strong { color: var(--marinho); font-size: 1.1rem; }
+
+/* Página do benefício */
+.regras-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.regras-grade .cartao h3 { font-size: .9rem; margin-bottom: .5rem; }
+.regras-grade .cartao p, .regras-grade .cartao ul { margin: 0; color: var(--texto); font-size: .9rem; line-height: 1.5; }
+.regras-grade .cartao ul { padding-left: 1.1rem; }
+
+/* Linha do tempo da solicitação */
+.linha-tempo { list-style: none; margin: 0; padding: 0 0 0 1.1rem; border-left: 2px solid var(--linha); display: grid; gap: .8rem; }
+.linha-tempo li { position: relative; font-size: .88rem; }
+.linha-tempo li::before { content: ''; position: absolute; left: calc(-1.1rem - 6px); top: .3rem; width: 10px; height: 10px; border-radius: 50%; background: var(--marinho); box-shadow: 0 0 0 3px #fff; }
+.linha-tempo strong { color: var(--marinho); }
+.linha-tempo small { display: block; color: var(--texto-suave); font-size: .78rem; }
+.linha-tempo p { margin: .2rem 0 0; }
+
+/* Modal de detalhe */
+.modal-det { max-width: 920px; }
+.modal-det header > div { flex: 1; }
+.det-corpo { padding: 1.3rem; max-height: calc(100vh - 200px); overflow-y: auto; display: grid; gap: 1.2rem; }
+.det-grade { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.2rem; align-items: start; }
+.det-bloco { display: grid; gap: .7rem; }
+.det-bloco h4 { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--laranja); }
+.anexos-lista { display: grid; gap: .45rem; }
+.anexos-lista a { display: flex; align-items: center; gap: .6rem; padding: .55rem .75rem; border-radius: 10px; border: 1px solid var(--linha); text-decoration: none; font-size: .88rem; color: var(--marinho); font-weight: 600; background: #fff; }
+.anexos-lista a:hover { border-color: var(--laranja); }
+.anexos-lista a small { margin-left: auto; color: var(--texto-suave); font-weight: 400; }
+.decisao { display: grid; gap: .7rem; padding: 1rem; border-radius: 12px; background: var(--fundo); border-left: 4px solid var(--laranja); }
+.decisao .linha-form { margin-top: 0; align-items: end; }
+.valor-grande { font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 800; color: var(--marinho); }
+.pre { white-space: pre-wrap; }
+
+@media (max-width: 800px) {
+  .passo { padding: 1.1rem 1rem 1.2rem; }
+  .passo-num { position: static; display: inline-grid; margin-bottom: .6rem; }
+  .det-grade { grid-template-columns: 1fr; }
+  .sol-item { grid-template-columns: auto 1fr; }
+  .sol-item .valor { grid-column: 2; justify-items: start; text-align: left; }
+}
+
+/* Área do RH */
+.previa { margin-top: 1rem; font-size: .9rem; }
+.previa .aviso { color: #b54d12; }
+.filtros-sol { margin-left: 0; }
+.filtros-sol .campo { max-width: 220px; }
+.filtros-sol #f-busca { flex: 1; min-width: 220px; max-width: none; }
+.kpi.kpi-valor strong { font-size: 1.3rem; white-space: nowrap; }

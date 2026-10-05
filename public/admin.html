@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Área do RH · Portal de Reembolsos</title>
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/portal.css">
+</head>
+<body class="app">
+
+  <!-- Login do RH -->
+  <div class="login" id="tela-login">
+    <form class="cartao login-cartao" id="form-login">
+      <span class="logo"><b>Âmbar</b><small>ENERGIA</small></span>
+      <h1>Área do RH</h1>
+      <p>Gestão do Portal de Reembolsos</p>
+      <label for="login">Usuário</label>
+      <input id="login" class="campo" autocomplete="username" required>
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" class="campo" autocomplete="current-password" required>
+      <button class="btn btn-laranja" type="submit">Entrar</button>
+      <a href="index.html">← Voltar ao portal</a>
+    </form>
+  </div>
+
+  <aside class="lateral" id="lateral" hidden>
+    <a class="lateral-marca logo claro" href="index.html"><b>Âmbar</b><small>ENERGIA · RH</small></a>
+    <p class="lateral-grupo">GESTÃO</p>
+    <button class="lateral-item ativo" data-aba="painel"><span class="ic">📈</span>Painel</button>
+    <button class="lateral-item" data-aba="solicitacoes"><span class="ic">🧾</span>Solicitações<span class="qtd" id="qtd-pendentes" hidden></span></button>
+    <button class="lateral-item" data-aba="folha"><span class="ic">💰</span>Folha de pagamento</button>
+    <p class="lateral-grupo">CADASTROS</p>
+    <button class="lateral-item" data-aba="base"><span class="ic">👥</span>Base de elegibilidade</button>
+    <button class="lateral-item" data-aba="config"><span class="ic">⚙️</span>Configurações</button>
+    <div class="lateral-rodape"><button class="lateral-item" id="sair"><span class="ic">⎋</span>Sair</button></div>
+  </aside>
+
+  <div class="principal" id="principal" hidden>
+    <header class="barra">
+      <button class="btn-menu" id="btn-menu" aria-label="Abrir menu">☰</button>
+      <div class="barra-titulo">
+        <small>PORTAL DE REEMBOLSOS · RH</small>
+        <strong>Área do RH</strong>
+      </div>
+      <div class="barra-usuario">
+        <span class="barra-nome"><strong id="nome-rh">…</strong><small>Analista do RH</small></span>
+        <a class="btn btn-claro btn-sm" href="index.html">Ver portal</a>
+      </div>
+    </header>
+
+    <main class="conteudo">
+      <!-- Painel -->
+      <section data-painel="painel">
+        <div class="ind-cab">
+          <h1 class="titulo-pagina">Painel da <em>competência</em></h1>
+          <div class="filtros"><select class="campo" id="painel-comp" aria-label="Competência"></select></div>
+        </div>
+        <div id="painel-periodo"></div>
+        <div class="kpis" id="painel-kpis"></div>
+        <div class="ind-grade">
+          <section class="cartao">
+            <h3>Valor aprovado por benefício</h3>
+            <div class="grafico-barras" id="painel-beneficios"></div>
+          </section>
+          <section class="cartao">
+            <h3>Solicitações por benefício</h3>
+            <div class="tabela-wrap"><table class="tabela" id="painel-tab-beneficios"></table></div>
+          </section>
+        </div>
+        <section class="cartao" style="margin-top:1.4rem">
+          <h3>Por empresa</h3>
+          <div class="tabela-wrap"><table class="tabela" id="painel-empresas"></table></div>
+        </section>
+      </section>
+
+      <!-- Solicitações -->
+      <section data-painel="solicitacoes" hidden>
+        <div class="ind-cab">
+          <h1 class="titulo-pagina">Análise de <em>solicitações</em></h1>
+        </div>
+        <div class="cartao">
+          <div class="filtros filtros-sol" style="margin-left:0">
+            <select class="campo" id="f-comp" aria-label="Competência"><option value="">Todas as competências</option></select>
+            <select class="campo" id="f-status" aria-label="Status">
+              <option value="">Todos os status</option><option value="analise" selected>Em análise</option><option value="aprovado">Aprovado</option><option value="reprovado">Reprovado</option>
+            </select>
+            <select class="campo" id="f-beneficio" aria-label="Benefício"><option value="">Todos os benefícios</option></select>
+            <select class="campo" id="f-empresa" aria-label="Empresa"><option value="">Todas as empresas</option></select>
+            <select class="campo" id="f-unidade" aria-label="Unidade"><option value="">Todas as unidades</option></select>
+            <label class="check">De <input class="campo" type="date" id="f-de" aria-label="Enviadas a partir de"></label>
+            <label class="check">até <input class="campo" type="date" id="f-ate" aria-label="Enviadas até"></label>
+            <input class="campo" id="f-busca" placeholder="Nome, CPF, matrícula, protocolo…" aria-label="Buscar">
+          </div>
+          <div class="cab-tabela" style="margin:1rem 0 .4rem">
+            <h3>🧾 Solicitações <small id="resumo-sol"></small></h3>
+            <div class="filtros"><button class="btn btn-claro btn-sm" id="exportar-sol">⬇ Exportar Excel</button></div>
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-sol"></table></div>
+        </div>
+      </section>
+
+      <!-- Folha -->
+      <section data-painel="folha" hidden>
+        <div class="ind-cab">
+          <h1 class="titulo-pagina">Relatório para a <em>folha</em></h1>
+          <div class="filtros"><select class="campo" id="folha-comp" aria-label="Competência"></select></div>
+        </div>
+        <div id="folha-aviso"></div>
+        <div class="cartao">
+          <div class="cab-tabela">
+            <h3>💰 Solicitações aprovadas <small id="folha-resumo"></small></h3>
+            <div class="filtros">
+              <a class="btn btn-laranja btn-sm" id="folha-csv" href="#">⬇ CSV para importação</a>
+              <button class="btn btn-claro btn-sm" id="folha-xlsx">⬇ Excel</button>
+            </div>
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-folha"></table></div>
+          <p class="q-dica" style="margin:.8rem 0 0">A verba de folha de cada benefício é definida em Configurações. O CSV usa “;” como separador e vírgula nos valores (padrão do Excel em português).</p>
+        </div>
+      </section>
+
+      <!-- Base de elegibilidade -->
+      <section data-painel="base" hidden>
+        <h1 class="titulo-pagina">Base de <em>elegibilidade</em></h1>
+        <div class="ind-grade">
+          <div class="cartao">
+            <h3>📥 Colaboradores <small>· carga mensal</small></h3>
+            <p class="q-dica">Colunas: CPF, MATRICULA, NOME, EMAIL, EMPRESA, CNPJ, UNIDADE, DATA_ADMISSAO, SUCEDIDO (S/N), DATA_DESLIGAMENTO e as colunas
+              MEDICAMENTO, EDUCACIONAL, CRECHE, OCULOS (S libera · N bloqueia · vazio segue a regra do benefício).</p>
+            <div class="importar">
+              <input type="file" id="arq-colab" accept=".xlsx,.xls,.csv" class="campo">
+              <label class="check"><input type="radio" name="modo-colab" value="atualizar" checked> Adicionar / atualizar</label>
+              <label class="check"><input type="radio" name="modo-colab" value="substituir"> Substituir base (quem não estiver na planilha perde o acesso)</label>
+              <button class="btn btn-laranja" id="imp-colab" disabled>Importar</button>
+              <a class="btn btn-claro" href="exemplos/base-colaboradores-modelo.csv" download>Baixar modelo</a>
+            </div>
+            <div class="previa" id="previa-colab"></div>
+          </div>
+          <div class="cartao">
+            <h3>👨‍👩‍👧 Dependentes <small>· carga mensal</small></h3>
+            <p class="q-dica">Colunas: CPF_TITULAR, NOME, CPF, PARENTESCO (Cônjuge, Filho, Enteado, Neto, Tutelado, Pai, Mãe), DATA_NASCIMENTO e as colunas
+              MEDICAMENTO, EDUCACIONAL, CRECHE, OCULOS (S/N/vazio). Importe os colaboradores antes.</p>
+            <div class="importar">
+              <input type="file" id="arq-dep" accept=".xlsx,.xls,.csv" class="campo">
+              <label class="check"><input type="radio" name="modo-dep" value="atualizar" checked> Adicionar / atualizar</label>
+              <label class="check"><input type="radio" name="modo-dep" value="substituir"> Substituir base de dependentes</label>
+              <button class="btn btn-laranja" id="imp-dep" disabled>Importar</button>
+              <a class="btn btn-claro" href="exemplos/base-dependentes-modelo.csv" download>Baixar modelo</a>
+            </div>
+            <div class="previa" id="previa-dep"></div>
+          </div>
+        </div>
+        <p class="q-dica" style="margin-top:.8rem">Dica: uma única planilha Excel com as abas “Colaboradores” e “Dependentes” também funciona — cada importação lê a aba correspondente.</p>
+        <div class="cartao" style="margin-top:1.4rem">
+          <div class="cab-tabela">
+            <h3>👥 Colaboradores <small id="qtd-colab"></small></h3>
+            <input class="campo busca" id="busca-colab" placeholder="Buscar por nome, CPF, matrícula, empresa…">
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-colab"></table></div>
+        </div>
+        <div class="cartao" style="margin-top:1.4rem">
+          <h3>🕓 Últimas cargas</h3>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-cargas"></table></div>
+        </div>
+      </section>
+
+      <!-- Configurações -->
+      <section data-painel="config" hidden>
+        <h1 class="titulo-pagina">Configurações</h1>
+        <form class="cartao" id="form-config">
+          <h3>📅 Período e prazos</h3>
+          <div class="grade-campos" style="margin-top:.8rem">
+            <label class="rotulo">Abertura (dia do mês)<input class="campo" type="number" min="1" max="28" name="dia_inicio"></label>
+            <label class="rotulo">Fechamento (dia do mês)<input class="campo" type="number" min="1" max="31" name="dia_fim"></label>
+            <label class="rotulo">Prazo do documento (dias)<input class="campo" type="number" min="1" max="365" name="prazo_documento_dias"></label>
+            <label class="rotulo">Abertura excepcional até <small>(opcional)</small><input class="campo" type="date" name="excecao_ate"></label>
+          </div>
+          <h3 style="margin-top:1.4rem">💳 Benefícios, limites e verbas de folha</h3>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-config-beneficios"></table></div>
+          <div class="linha-form"><button class="btn btn-laranja" type="submit" style="margin-left:auto">Salvar configurações</button></div>
+        </form>
+
+        <div class="ind-grade" style="margin-top:1.4rem">
+          <div class="cartao">
+            <h3>🔐 Usuários do RH <small>· registrados como responsáveis pelas análises</small></h3>
+            <div class="tabela-wrap"><table class="tabela" id="tabela-usuarios"></table></div>
+            <form class="linha-form" id="form-usuario">
+              <input class="campo" name="nome" placeholder="Nome completo" required>
+              <input class="campo" name="login" placeholder="Login (ex.: maria.souza)" required>
+              <input class="campo" name="senha" type="password" placeholder="Senha (mín. 8)" minlength="8" required autocomplete="new-password">
+              <button class="btn btn-laranja" type="submit">Adicionar</button>
+            </form>
+          </div>
+          <div class="cartao">
+            <h3>🛟 Segurança e avisos</h3>
+            <p id="status-email" class="q-dica"></p>
+            <form class="linha-form" id="form-senha">
+              <input class="campo" name="senha" type="password" placeholder="Nova senha (mín. 8)" minlength="8" required autocomplete="new-password">
+              <button class="btn btn-claro" type="submit">Trocar minha senha</button>
+            </form>
+            <div class="linha-form"><a class="btn btn-claro" href="/api/admin/backup">⬇ Backup do banco</a></div>
+            <p class="q-dica">O backup inclui base, solicitações e histórico. Os documentos anexados ficam na pasta de dados do servidor (incluída no snapshot do disco).</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Análise da solicitação -->
+  <dialog class="modal modal-det" id="modal-analise">
+    <header>
+      <div><small id="an-protocolo">SOLICITAÇÃO</small><h3 id="an-titulo">Solicitação</h3></div>
+      <button type="button" class="btn btn-claro btn-sm" data-fechar aria-label="Fechar">✕</button>
+    </header>
+    <div class="det-corpo" id="an-corpo"></div>
+  </dialog>
+
+  <div class="dica-grafico" id="dica-grafico" role="tooltip" hidden></div>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="js/comum.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "ambar-portal-reembolsos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portal de Reembolsos (medicamento, educacional, creche/babá e óculos) - Âmbar Energia / RH",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "dev": "node --no-warnings --watch server.js",
+    "seed": "node --no-warnings scripts/seed-demo.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.15"
+  }
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meus Reembolsos · Âmbar Energia</title>
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/portal.css">
+</head>
+<body class="app colaborador">
+  <aside class="lateral" id="lateral">
+    <a class="lateral-marca logo claro" href="index.html"><b>Âmbar</b><small>ENERGIA</small></a>
+    <p class="lateral-grupo">INÍCIO</p>
+    <button class="lateral-item ativo" data-rota="painel"><span class="ic">⌂</span>Meu painel</button>
+    <p class="lateral-grupo">SOLICITAÇÕES</p>
+    <button class="lateral-item" data-rota="nova"><span class="ic">＋</span>Nova solicitação</button>
+    <button class="lateral-item" data-rota="minhas"><span class="ic">☰</span>Minhas solicitações<span class="qtd" id="qtd-analise" hidden></span></button>
+    <p class="lateral-grupo">MEUS BENEFÍCIOS</p>
+    <nav id="lista-modulos" aria-label="Meus benefícios"></nav>
+    <div class="lateral-rodape">
+      <button class="lateral-item" id="sair"><span class="ic">⎋</span>Sair</button>
+    </div>
+  </aside>
+
+  <div class="principal">
+    <header class="barra">
+      <button class="btn-menu" id="btn-menu" aria-label="Abrir menu">☰</button>
+      <div class="barra-titulo">
+        <small>PORTAL DE REEMBOLSOS · RH</small>
+        <strong id="titulo-barra">Meu painel</strong>
+      </div>
+      <div class="barra-usuario">
+        <span class="barra-nome"><strong id="nome-usuario">…</strong><small id="cargo-usuario"></small></span>
+        <span class="avatar" id="avatar">–</span>
+      </div>
+    </header>
+
+    <main class="conteudo" id="conteudo" tabindex="-1">
+      <p class="carregando">Carregando seus benefícios…</p>
+    </main>
+  </div>
+
+  <!-- Detalhe da solicitação -->
+  <dialog class="modal modal-det" id="modal-sol">
+    <header>
+      <div><small id="sol-protocolo">SOLICITAÇÃO</small><h3 id="sol-titulo">Solicitação</h3></div>
+      <button type="button" class="btn btn-claro btn-sm" data-fechar aria-label="Fechar">✕</button>
+    </header>
+    <div class="det-corpo" id="sol-corpo"></div>
+  </dialog>
+
+  <script src="js/comum.js"></script>
+  <script src="js/portal.js"></script>
+</body>
+</html>

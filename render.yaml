@@ -1,0 +1,36 @@
+# Blueprint do Render para o Portal de Reembolsos (render.com → New → Blueprint → este repositório).
+# Plano Starter + disco persistente: base, solicitações e documentos anexados sobrevivem a novos deploys.
+services:
+  - type: web
+    name: reembolsos-ambar
+    runtime: node
+    plan: starter
+    region: virginia
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    disk:
+      name: dados-reembolsos
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_DIR
+        value: /var/data
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: PORTAL_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
