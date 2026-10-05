@@ -1,7 +1,6 @@
-// Home pública: acesso por CPF + matrícula e resumo dos benefícios e prazos.
+// Home pública: acesso por CPF e resumo dos benefícios e prazos.
 const form = document.getElementById('acesso');
 const campoCpf = document.getElementById('cpf');
-const campoMatricula = document.getElementById('matricula');
 const msg = document.getElementById('acesso-msg');
 mascaraCpf(campoCpf);
 
@@ -10,16 +9,15 @@ form.addEventListener('submit', async (e) => {
   msg.className = 'acesso-msg';
   msg.textContent = '';
   const cpf = campoCpf.value.replace(/\D/g, '');
-  const matricula = campoMatricula.value.trim();
-  if (cpf.length !== 11 || !matricula) {
-    msg.textContent = cpf.length !== 11 ? 'Digite os 11 números do seu CPF.' : 'Informe sua matrícula.';
+  if (cpf.length !== 11) {
+    msg.textContent = 'Digite os 11 números do seu CPF.';
     msg.classList.add('erro');
     return;
   }
   const botao = form.querySelector('button');
   botao.disabled = true;
   try {
-    const r = await api('/api/entrar', { method: 'POST', body: { cpf, matricula } });
+    const r = await api('/api/entrar', { method: 'POST', body: { cpf } });
     msg.textContent = `Olá, ${r.nome.split(' ')[0]}! Abrindo o portal…`;
     msg.classList.add('ok');
     setTimeout(() => { location.href = 'portal.html'; }, 600);

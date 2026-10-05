@@ -1,5 +1,5 @@
 // Portal de Reembolsos · Âmbar Energia (RH)
-// Servidor HTTP: API do colaborador (CPF + matrícula), API do RH (usuário e senha) e arquivos estáticos.
+// Servidor HTTP: API do colaborador (acesso por CPF), API do RH (usuário e senha) e arquivos estáticos.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -39,8 +39,6 @@ function normalizarCpf(valor) {
   return digitos.padStart(11, '0');
 }
 
-/** Matrícula comparada sem zeros à esquerda e sem espaços (o Excel costuma removê-los). */
-const normalizarMatricula = (v) => String(v ?? '').trim().replace(/^0+(?=.)/, '').toUpperCase();
 
 function assinar(payload) {
   const corpo = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -82,7 +80,7 @@ function lerColaborador(cpf) {
 function exigirColaborador(req, res, next) {
   const s = verificar(lerCookies(req).sess_colab);
   const colab = s && lerColaborador(s.cpf);
-  if (!colab) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente com seu CPF e matrícula.' });
+  if (!colab) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente com seu CPF.' });
   req.colab = colab;
   next();
 }
@@ -250,11 +248,10 @@ app.get('/api/publico/info', (_req, res) => {
 app.post('/api/entrar', (req, res) => {
   if (limiteColab.bloqueado(req)) return res.status(429).json({ erro: MSG_LIMITE });
   const cpf = normalizarCpf(req.body?.cpf);
-  const matricula = normalizarMatricula(req.body?.matricula);
-  const colab = cpf && matricula && lerColaborador(cpf);
-  if (!colab || normalizarMatricula(colab.matricula) !== matricula) {
+  const colab = cpf && lerColaborador(cpf);
+  if (!colab) {
     limiteColab.registrar(req);
-    return res.status(403).json({ erro: 'CPF ou matrícula não encontrados na base de elegibilidade. Procure o time de RH.' });
+    return res.status(403).json({ erro: 'Acesso negado. CPF não encontrado na base de elegibilidade. Procure o time de RH.' });
   }
   db.prepare("UPDATE colaboradores SET acessos = acessos + 1, ultimo_acesso = datetime('now') WHERE cpf = ?").run(cpf);
   definirSessao(res, 'sess_colab', { cpf }, 8);

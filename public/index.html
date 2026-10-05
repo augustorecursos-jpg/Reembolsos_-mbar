@@ -51,20 +51,16 @@
             consulta o status da análise do RH a qualquer momento.</p>
         </div>
 
-        <form class="cartao-acesso cartao-acesso-duplo" id="acesso" novalidate>
+        <form class="cartao-acesso" id="acesso" novalidate>
           <div class="cartao-acesso-topo">
             <svg viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60C120 40 250 0 400 8V0H0Z" fill="#164d74"/><path d="M0 52C130 34 260 2 400 10" fill="none" stroke="#ec6b24" stroke-width="2"/></svg>
             <h2>Acesse o portal</h2>
-            <p id="acesso-periodo">Informe seu CPF e sua matrícula</p>
+            <p id="acesso-periodo">Informe seu CPF para continuar</p>
           </div>
           <div class="cartao-acesso-corpo">
-            <label>CPF
-              <input id="cpf" name="cpf" class="campo" inputmode="numeric" autocomplete="off"
-                     placeholder="000.000.000-00" maxlength="14" aria-describedby="acesso-msg">
-            </label>
-            <label>Matrícula
-              <input id="matricula" name="matricula" class="campo" autocomplete="off" placeholder="Sua matrícula" maxlength="20">
-            </label>
+            <label for="cpf">CPF</label>
+            <input id="cpf" name="cpf" class="campo" inputmode="numeric" autocomplete="off"
+                   placeholder="000.000.000-00" maxlength="14" aria-describedby="acesso-msg">
             <button class="btn btn-laranja" type="submit">Acessar portal →</button>
             <p class="acesso-msg" id="acesso-msg" role="alert" aria-live="assertive"></p>
             <small>O acesso é liberado para colaboradores da base de elegibilidade do RH.</small>
@@ -89,7 +85,7 @@
         <h2>Quatro passos simples</h2>
       </div>
       <ol class="passos">
-        <li><b>1</b><h3>Entre com CPF e matrícula</h3><p>Seus dados cadastrais já vêm preenchidos pela base do RH.</p></li>
+        <li><b>1</b><h3>Entre com o seu CPF</h3><p>Seus dados cadastrais já vêm preenchidos pela base do RH.</p></li>
         <li><b>2</b><h3>Escolha benefício e beneficiário</h3><p>Só aparecem os benefícios e dependentes elegíveis, com o saldo disponível.</p></li>
         <li><b>3</b><h3>Informe a despesa e anexe</h3><p>Data e valor do documento, mais os anexos obrigatórios em PDF ou foto.</p></li>
         <li><b>4</b><h3>Acompanhe a análise</h3><p>Consulte o status no portal e receba a confirmação por e-mail.</p></li>

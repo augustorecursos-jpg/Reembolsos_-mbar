@@ -96,6 +96,6 @@ if (!db.prepare('SELECT 1 FROM solicitacoes LIMIT 1').get()) {
   }
 }
 
-console.log('Dados de demonstração criados. Acesso do colaborador (CPF / matrícula):');
-for (const c of colaboradores) console.log(`  ${c.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')} / ${c.matricula}  ${c.nome}`);
+console.log('Dados de demonstração criados. Acesso do colaborador (CPF):');
+for (const c of colaboradores) console.log(`  ${c.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')}  ${c.nome}`);
 console.log('Área do RH: usuário "admin" com a senha de ADMIN_PASSWORD (padrão local: ambar-rh).');

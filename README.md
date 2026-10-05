@@ -30,13 +30,13 @@ npm start         # http://localhost:3001
 npm test          # testes das regras de negócio
 ```
 
-Demonstração (após `npm run seed`) — colaborador entra com **CPF + matrícula**:
+Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
 
-| CPF | Matrícula | Perfil |
-|---|---|---|
-| 123.456.789-09 | 1001 | Sucedida, com cônjuge, 2 filhos e mãe |
-| 987.654.321-00 | 2002 | Não sucedido, com cônjuge, enteada, filho e mãe |
-| 111.444.777-35 | 3003 | Não sucedida, sem dependentes |
+| CPF | Perfil |
+|---|---|
+| 123.456.789-09 | Sucedida, com cônjuge, 2 filhos e mãe |
+| 987.654.321-00 | Não sucedido, com cônjuge, enteada, filho e mãe |
+| 111.444.777-35 | Não sucedida, sem dependentes |
 
 Área do RH (`/admin.html`): usuário `admin`, senha de `ADMIN_PASSWORD` (padrão local `ambar-rh`).
 
@@ -55,7 +55,7 @@ Demonstração (após `npm run seed`) — colaborador entra com **CPF + matrícu
 1. **RH importa a base mensal** (Base de elegibilidade): planilha de colaboradores e de dependentes
    (modelos em `public/exemplos/`). Modo *adicionar/atualizar* ou *substituir* (quem sai da planilha perde o acesso;
    o histórico permanece). Cada carga fica registrada.
-2. **Colaborador acessa** com CPF + matrícula. Vê apenas os benefícios e os dependentes elegíveis, com o saldo de cada um.
+2. **Colaborador acessa** com o CPF. Vê apenas os benefícios e os dependentes elegíveis, com o saldo de cada um.
 3. **Nova solicitação** em 5 passos: benefício → beneficiário → data e valor do documento → anexos obrigatórios →
    confirmação (dados cadastrais preenchidos pela base + declaração). Validações na tela e no servidor.
 4. **RH analisa**: filtros por competência, status, benefício, empresa, unidade, período e busca; vê anexos, saldo do limite
@@ -89,14 +89,14 @@ da folha não mudar quando a base do mês seguinte for importada. Dependentes s�
 
 ## Segurança
 
-- Colaborador: CPF + matrícula, sessão de 8 h, limite de tentativas com falha por IP.
+- Colaborador: CPF (como na Trilha DHO), sessão de 8 h, limite de tentativas com falha por IP.
 - RH: usuários individuais (senha com scrypt), cadastrados em Configurações — o nome de quem analisou fica registrado.
 - Documentos anexados ficam fora da pasta pública e só são entregues ao próprio colaborador ou ao RH.
 - Botão de backup do banco em Configurações; os anexos ficam em `DATA_DIR/anexos` (incluídos no snapshot do disco).
 
 ## Pontos para validar com o RH (seção 11 do documento)
 
-- **Autenticação**: hoje CPF + matrícula. Se houver Azure AD/Microsoft 365, dá para trocar por login corporativo (SSO).
+- **Autenticação**: hoje só o CPF. Para mais segurança, dá para pedir também a matrícula ou a data de nascimento; se houver Azure AD/Microsoft 365, dá para trocar por login corporativo (SSO).
 - **Colaboradores admitidos entre 2012 e 11/2024**: o documento só define limites para sucedidos (até 2011) e não sucedidos
   (a partir de 12/2024). Sem a coluna `SUCEDIDO`, esse grupo é tratado como não sucedido — confirmar a regra.
 - **Faixas etárias**: “até 6 anos” (creche) foi tratado como até a véspera do 7º aniversário; “7 anos” (educacional) a partir do aniversário de 7.
