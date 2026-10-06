@@ -60,6 +60,17 @@ há também `rh.teste` / `rh-teste-123` (perfil RH), para ver a diferença entre
 | `PORTAL_URL` | Link do portal incluído nos e-mails | – |
 | `NODE_ENV=production` | Cookies só via HTTPS e senha obrigatória | – |
 
+## Guia de acesso (e-book em PDF)
+
+`public/guia-de-acesso.pdf` — guia do colaborador com as telas do portal: como entrar, o painel, benefícios e limites,
+os 5 passos da solicitação, acompanhamento, uso pelo celular e dúvidas. Fica disponível na home (“Primeira vez aqui?”),
+nas Dúvidas frequentes e no menu do portal, e pode ser enviado por e-mail/WhatsApp (≈2,4 MB).
+
+Para atualizar depois de mudanças nas telas (requer Playwright: `npm i -D playwright`):
+1. `npm run seed && PORT=3020 npm start` (dados de demonstração) e, em outro terminal, `node guia/capturar-telas.js`;
+2. converta as PNG para JPG em `guia/img` (com o `marcas.json`);
+3. `PORTAL_URL=https://seu-endereco npm run guia` — o endereço do portal aparece no guia.
+
 ## Fluxo
 
 1. **RH importa a base mensal** (Base de elegibilidade): planilha de colaboradores e de dependentes

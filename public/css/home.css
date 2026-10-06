@@ -184,3 +184,15 @@ section[id] { scroll-margin-top: 80px; } /* o topo fixo não cobre o título ao 
   .cartao-acesso-corpo { grid-template-columns: 1fr; }
   .prazo-ver { display: none; }
 }
+
+/* "Primeira vez aqui?" — link para o guia de acesso em PDF */
+.primeira-vez {
+  max-width: 480px; margin-top: .9rem; display: flex; align-items: center; gap: .7rem; padding: .7rem 1rem; border-radius: 14px;
+  text-decoration: none; color: #dce7f0; font-size: .9rem; background: rgba(var(--destaque-claro-rgb), .14);
+  border: 1px solid rgba(var(--destaque-claro-rgb), .45); transition: background .15s, border-color .15s;
+}
+.primeira-vez:hover { background: rgba(var(--destaque-claro-rgb), .24); border-color: var(--destaque-claro); }
+.primeira-vez strong { color: #fff; }
+.primeira-vez .ic { font-size: 1.3rem; }
+.primeira-vez .seta { margin-left: auto; font-size: .78rem; font-weight: 800; color: var(--destaque-claro); white-space: nowrap; }
+.faq a { color: var(--destaque); }

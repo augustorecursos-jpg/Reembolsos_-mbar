@@ -8,6 +8,7 @@
     "start": "node --no-warnings server.js",
     "dev": "node --no-warnings --watch server.js",
     "seed": "node --no-warnings scripts/seed-demo.js",
+    "guia": "node guia/gerar-pdf.js",
     "test": "node --no-warnings --test test/*.test.js"
   },
   "engines": {
