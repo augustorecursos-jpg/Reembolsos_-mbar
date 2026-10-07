@@ -5,7 +5,7 @@ const adm = { usuario: null, colaboradores: [], auditoria: [], linhas: { colab: 
 const area = iniciarArea({
   exigeAdmin: true,
   abaPadrao: 'visao',
-  abas: { visao: carregarVisao, base: carregarBase, colaboradores: carregarColaboradores, usuarios: carregarUsuarios, regras: carregarRegras, portal: carregarPortal, auditoria: carregarAuditoria },
+  abas: { visao: carregarVisao, base: carregarBase, colaboradores: carregarColaboradores, usuarios: carregarUsuarios, regras: carregarRegras, portal: carregarPortal, auditoria: carregarAuditoria, exclusao: carregarExclusao },
   aoEntrar: async (usuario) => { adm.usuario = usuario; },
 });
 document.addEventListener('click', (e) => {
@@ -330,4 +330,117 @@ for (const id of ['aud-de', 'aud-ate', 'aud-busca']) {
 document.getElementById('aud-exportar').addEventListener('click', () => {
   baixarExcel(adm.auditoria.map(a => ({ 'Data e hora': dataHoraBR(a.em), Usuário: a.usuario || '', Perfil: PERFIS[a.perfil] || '', Ação: a.acao, Detalhe: a.detalhe || '', IP: a.ip || '' })),
     'Auditoria', `reembolsos-auditoria-${new Date().toISOString().slice(0, 10)}.xlsx`);
+});
+
+// ---------- Confirmação de exclusão (digitar EXCLUIR) ----------
+function confirmarExclusao(titulo, texto) {
+  const modal = document.getElementById('modal-excluir');
+  const form = modal.querySelector('form');
+  document.getElementById('ex-titulo').textContent = titulo;
+  document.getElementById('ex-texto').innerHTML = texto;
+  form.reset();
+  modal.showModal();
+  form.confirmacao.focus();
+  return new Promise((resolve) => {
+    const aoEnviar = (e) => {
+      e.preventDefault();
+      if (form.confirmacao.value.trim().toUpperCase() !== 'EXCLUIR') { toast('Digite EXCLUIR para confirmar.', 'erro'); return; }
+      fechar('EXCLUIR');
+    };
+    const fechar = (valor) => { form.removeEventListener('submit', aoEnviar); modal.removeEventListener('close', aoFechar); if (modal.open) modal.close(); resolve(valor); };
+    const aoFechar = () => fechar(null);
+    form.addEventListener('submit', aoEnviar);
+    modal.addEventListener('close', aoFechar);
+  });
+}
+
+// ---------- Excluir solicitações ----------
+const exclusao = { lista: [], selecionadas: new Set(), filtrosCarregados: false };
+
+async function carregarExclusao() {
+  if (!exclusao.filtrosCarregados) {
+    const f = await api('/api/admin/filtros');
+    document.getElementById('ex-comp').innerHTML = `<option value="">Todas as competências</option>${f.competencias.map(c => `<option value="${c}">${competenciaBR(c)}</option>`).join('')}`;
+    document.getElementById('ex-beneficio').innerHTML = `<option value="">Todos os benefícios</option>${f.beneficios.map(b => `<option value="${b.codigo}">${esc(b.nome)}</option>`).join('')}`;
+    exclusao.filtrosCarregados = true;
+  }
+  const q = new URLSearchParams();
+  for (const [k, id] of [['competencia', 'ex-comp'], ['status', 'ex-status'], ['beneficio', 'ex-beneficio'], ['busca', 'ex-busca']]) { const v = document.getElementById(id).value.trim(); if (v) q.set(k, v); }
+  exclusao.lista = await api(`/api/admin/solicitacoes?${q}`);
+  const ids = new Set(exclusao.lista.map(s => s.id));
+  for (const id of [...exclusao.selecionadas]) if (!ids.has(id)) exclusao.selecionadas.delete(id);
+  renderExclusao();
+}
+
+function renderExclusao() {
+  const l = exclusao.lista;
+  const todas = l.length > 0 && l.every(s => exclusao.selecionadas.has(s.id));
+  document.getElementById('ex-resumo').textContent = `· ${fmt(l.length)} encontrada(s) · ${fmt(exclusao.selecionadas.size)} selecionada(s)`;
+  const btn = document.getElementById('ex-excluir');
+  btn.disabled = !exclusao.selecionadas.size;
+  btn.textContent = exclusao.selecionadas.size ? `🗑️ Excluir ${fmt(exclusao.selecionadas.size)} selecionada(s)` : '🗑️ Excluir selecionadas';
+  document.getElementById('ex-tabela').innerHTML = `
+    <tr><th><input type="checkbox" id="ex-todas" ${todas ? 'checked' : ''} aria-label="Selecionar todas" ${l.length ? '' : 'disabled'}></th>
+      <th>Protocolo</th><th>Enviada em</th><th>Colaborador</th><th>Benefício</th><th>Beneficiário</th><th>Valor</th><th>Status</th><th></th></tr>
+    ${l.map(s => `
+      <tr class="${exclusao.selecionadas.has(s.id) ? 'selecionada' : ''}">
+        <td><input type="checkbox" data-sel="${s.id}" ${exclusao.selecionadas.has(s.id) ? 'checked' : ''} aria-label="Selecionar ${esc(s.protocolo)}"></td>
+        <td><strong>${esc(s.protocolo)}</strong></td><td>${dataHoraBR(s.criado_em)}</td>
+        <td>${esc(s.nome)}<br><small class="q-dica">Mat. ${esc(s.matricula)} · ${formatarCpf(s.cpf)}</small></td>
+        <td>${ICONES[s.beneficio] || ''} ${esc(s.beneficio_nome.replace('Reembolso ', ''))}</td>
+        <td>${esc(s.beneficiario_nome)}</td>
+        <td>${reais(s.status === 'aprovado' ? s.valor_aprovado : s.valor_solicitado)}</td>
+        <td>${etiquetaStatus(s.status)}</td>
+        <td><button class="btn btn-perigo btn-sm" data-excluir-uma="${s.id}">Excluir</button></td>
+      </tr>`).join('') || '<tr><td colspan="9">Nenhuma solicitação com estes filtros.</td></tr>'}`;
+}
+
+let _exTimer;
+for (const id of ['ex-comp', 'ex-status', 'ex-beneficio', 'ex-busca']) {
+  document.getElementById(id).addEventListener(id === 'ex-busca' ? 'input' : 'change', () => {
+    clearTimeout(_exTimer);
+    _exTimer = setTimeout(() => carregarExclusao().catch(err => toast(err.message, 'erro')), id === 'ex-busca' ? 300 : 0);
+  });
+}
+document.getElementById('ex-tabela').addEventListener('change', (e) => {
+  if (e.target.id === 'ex-todas') {
+    for (const s of exclusao.lista) e.target.checked ? exclusao.selecionadas.add(s.id) : exclusao.selecionadas.delete(s.id);
+  } else if (e.target.dataset.sel) {
+    const id = Number(e.target.dataset.sel);
+    e.target.checked ? exclusao.selecionadas.add(id) : exclusao.selecionadas.delete(id);
+  } else return;
+  renderExclusao();
+});
+
+async function excluirSolicitacoes(ids) {
+  const sols = exclusao.lista.filter(s => ids.includes(s.id));
+  const nomes = sols.slice(0, 5).map(s => `<li><strong>${esc(s.protocolo)}</strong> · ${esc(s.nome)} · ${esc(s.beneficio_nome.replace('Reembolso ', ''))}</li>`).join('');
+  const confirmacao = await confirmarExclusao(
+    ids.length === 1 ? 'Excluir 1 solicitação' : `Excluir ${fmt(ids.length)} solicitações`,
+    `Serão excluídas definitivamente, com documentos, comentários e andamento:<ul style="margin:.5rem 0 0;padding-left:1.1rem">${nomes}${sols.length > 5 ? `<li>… e mais ${fmt(sols.length - 5)}</li>` : ''}</ul>`);
+  if (!confirmacao) return;
+  try {
+    const r = await api('/api/admin/solicitacoes/excluir', { method: 'POST', body: { ids, confirmacao } });
+    toast(`${fmt(r.excluidas)} solicitação(ões) excluída(s).`);
+    ids.forEach(id => exclusao.selecionadas.delete(id));
+    carregarExclusao();
+  } catch (err) { toast(err.message, 'erro'); }
+}
+document.getElementById('ex-excluir').addEventListener('click', () => excluirSolicitacoes([...exclusao.selecionadas]));
+document.getElementById('ex-tabela').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-excluir-uma]');
+  if (b) excluirSolicitacoes([Number(b.dataset.excluirUma)]);
+});
+
+// ---------- Limpar auditoria ----------
+document.getElementById('aud-limpar').addEventListener('click', async () => {
+  const ate = document.getElementById('aud-limpar-ate').value;
+  const confirmacao = await confirmarExclusao('Limpar auditoria',
+    ate ? `Serão removidos os registros da auditoria até <strong>${dataBR(ate)}</strong>.` : 'Serão removidos <strong>todos</strong> os registros da auditoria.');
+  if (!confirmacao) return;
+  try {
+    const r = await api('/api/admin/auditoria/limpar', { method: 'POST', body: { ate, confirmacao } });
+    toast(`${fmt(r.removidos)} registro(s) removido(s).`);
+    carregarAuditoria();
+  } catch (err) { toast(err.message, 'erro'); }
 });

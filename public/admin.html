@@ -53,6 +53,7 @@
     <button class="lateral-item" data-aba="regras"><span class="ic">⚙️</span>Período e benefícios</button>
     <button class="lateral-item" data-aba="portal"><span class="ic">🚦</span>Acesso ao portal</button>
     <button class="lateral-item" data-aba="auditoria"><span class="ic">🕓</span>Auditoria</button>
+    <button class="lateral-item" data-aba="exclusao"><span class="ic">🗑️</span>Excluir solicitações</button>
     <p class="lateral-grupo">OPERAÇÃO</p>
     <a class="lateral-item" href="rh.html"><span class="ic">🧾</span>Ir para a Área do RH</a>
     <div class="lateral-rodape">
@@ -217,6 +218,31 @@
         </div>
       </section>
 
+      <!-- Exclusão de solicitações -->
+      <section data-painel="exclusao" hidden>
+        <h1 class="titulo-pagina">Excluir <em>solicitações</em></h1>
+        <div class="alerta erro" style="margin:0 0 1.2rem">⚠️ <span><strong>Exclusão definitiva.</strong> A solicitação some da Área do RH (análise, painel e folha) e de “Minhas solicitações” do colaborador,
+          junto com os documentos anexados, comentários e andamento. Não há como desfazer — se precisar guardar, baixe antes o <a href="/api/admin/backup">backup do banco</a>.
+          Cada exclusão fica registrada na auditoria.</span></div>
+        <div class="cartao">
+          <div class="filtros filtros-sol" style="margin-left:0">
+            <select class="campo" id="ex-comp" aria-label="Competência"><option value="">Todas as competências</option></select>
+            <select class="campo" id="ex-status" aria-label="Status">
+              <option value="">Todos os status</option><option value="analise">Em análise</option><option value="aprovado">Aprovado</option><option value="reprovado">Reprovado</option>
+            </select>
+            <select class="campo" id="ex-beneficio" aria-label="Benefício"><option value="">Todos os benefícios</option></select>
+            <input class="campo" id="ex-busca" placeholder="Nome, CPF, matrícula, protocolo…" aria-label="Buscar">
+          </div>
+          <div class="cab-tabela" style="margin:1rem 0 .4rem">
+            <h3>🧾 Solicitações <small id="ex-resumo"></small></h3>
+            <div class="filtros">
+              <button class="btn btn-perigo btn-sm" id="ex-excluir" disabled>🗑️ Excluir selecionadas</button>
+            </div>
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="ex-tabela"></table></div>
+        </div>
+      </section>
+
       <!-- Auditoria -->
       <section data-painel="auditoria" hidden>
         <h1 class="titulo-pagina">Auditoria</h1>
@@ -232,6 +258,15 @@
           </div>
           <p class="q-dica" style="margin-top:0">Logins (inclusive tentativas com senha errada), decisões, comentários, importações, bloqueios, mudanças de usuários e de configurações, backups e downloads do arquivo da folha.</p>
           <div class="tabela-wrap"><table class="tabela" id="tabela-auditoria"></table></div>
+        </div>
+        <div class="cartao" style="margin-top:1.4rem">
+          <h3>🧹 Limpar registros da auditoria</h3>
+          <p class="q-dica">Remove registros antigos (por exemplo, os dos testes antes da implantação). A limpeza em si fica registrada.</p>
+          <div class="linha-form" style="align-items:center">
+            <label class="check">Remover registros até <input class="campo" type="date" id="aud-limpar-ate" style="width:auto"></label>
+            <span class="q-dica">(deixe em branco para remover todos)</span>
+            <button class="btn btn-perigo btn-sm" id="aud-limpar" style="margin-left:auto">🧹 Limpar auditoria</button>
+          </div>
         </div>
       </section>
     </main>
@@ -251,6 +286,23 @@
         <label class="rotulo">Confirme a nova senha<input class="campo" type="password" name="confirmar" minlength="8" autocomplete="new-password" required></label>
       </div>
       <footer><span></span><button class="btn btn-laranja" type="submit">Salvar nova senha</button></footer>
+    </form>
+  </dialog>
+
+  <!-- Confirmação de exclusão -->
+  <dialog class="modal qr-modal" id="modal-excluir">
+    <form>
+      <header>
+        <div><small>EXCLUSÃO DEFINITIVA</small><h3 id="ex-titulo">Confirmar exclusão</h3></div>
+        <button type="button" class="btn btn-claro btn-sm" data-fechar aria-label="Fechar">✕</button>
+      </header>
+      <div class="det-corpo">
+        <p id="ex-texto" style="margin:0"></p>
+        <label class="rotulo"><span>Digite <strong>EXCLUIR</strong> para confirmar</span>
+          <input class="campo" name="confirmacao" autocomplete="off" required>
+        </label>
+      </div>
+      <footer><button type="button" class="btn btn-claro" data-fechar>Cancelar</button><button class="btn btn-perigo" type="submit">Excluir definitivamente</button></footer>
     </form>
   </dialog>
 

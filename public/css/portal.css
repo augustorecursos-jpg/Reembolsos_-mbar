@@ -151,3 +151,8 @@ a.lateral-item { text-decoration: none; }
 .tabela tr.alerta-linha td { background: #fff6f5; }
 #acesso-negado .cartao { gap: .9rem; }
 #acesso-negado .btn { width: 100%; }
+.tabela tr.selecionada td { background: #fff6f5; }
+/* Janelas pequenas (confirmação de exclusão, troca de senha) */
+.qr-modal { max-width: 500px; }
+.qr-modal header > div { flex: 1; }
+.qr-modal .det-corpo { gap: .9rem; }

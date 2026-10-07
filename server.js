@@ -931,6 +931,42 @@ app.get('/api/admin/visao-geral', exigirAdmin, (_req, res) => {
   });
 });
 
+// -- Administração: exclusão definitiva de solicitações (some da Área do RH e do portal do colaborador) --
+
+app.post('/api/admin/solicitacoes/excluir', exigirAdmin, (req, res) => {
+  const ids = [...new Set((Array.isArray(req.body?.ids) ? req.body.ids : []).map(Number).filter(n => Number.isInteger(n) && n > 0))];
+  if (!ids.length) return res.status(400).json({ erro: 'Selecione ao menos uma solicitação.' });
+  if (req.body?.confirmacao !== 'EXCLUIR') return res.status(400).json({ erro: 'Digite EXCLUIR para confirmar.' });
+  const marcadores = ids.map(() => '?').join(',');
+  const sols = db.prepare(`SELECT id, protocolo, nome FROM solicitacoes WHERE id IN (${marcadores})`).all(...ids);
+  if (!sols.length) return res.status(404).json({ erro: 'Nenhuma das solicitações foi encontrada.' });
+  const arquivos = db.prepare(`SELECT arquivo FROM anexos WHERE solicitacao_id IN (${marcadores})`).all(...ids).map(a => a.arquivo);
+  db.exec('BEGIN');
+  try {
+    // Anexos e histórico (eventos/comentários) saem junto, pelas chaves com ON DELETE CASCADE.
+    db.prepare(`DELETE FROM solicitacoes WHERE id IN (${marcadores})`).run(...ids);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  for (const a of arquivos) fs.rm(path.join(ANEXOS_DIR, path.basename(a)), { force: true }, () => {});
+  const lista = sols.map(x => x.protocolo).join(', ');
+  auditar(req, 'Excluiu solicitações', `${sols.length} solicitação(ões): ${lista.length > 900 ? `${lista.slice(0, 900)}…` : lista}`);
+  res.json({ ok: true, excluidas: sols.length, anexos: arquivos.length });
+});
+
+/** Limpa registros da auditoria (todos ou até uma data). A própria limpeza fica registrada. */
+app.post('/api/admin/auditoria/limpar', exigirAdmin, (req, res) => {
+  if (req.body?.confirmacao !== 'EXCLUIR') return res.status(400).json({ erro: 'Digite EXCLUIR para confirmar.' });
+  const ate = R.normalizarData(req.body?.ate);
+  const r = ate
+    ? db.prepare('DELETE FROM auditoria WHERE date(em) <= ?').run(ate)
+    : db.prepare('DELETE FROM auditoria').run();
+  auditar(req, 'Limpou a auditoria', `${r.changes} registro(s) removido(s)${ate ? ` até ${ate.split('-').reverse().join('/')}` : ' (todos)'}`);
+  res.json({ ok: true, removidos: r.changes });
+});
+
 app.get('/api/admin/auditoria', exigirAdmin, (req, res) => {
   const where = [];
   const params = [];

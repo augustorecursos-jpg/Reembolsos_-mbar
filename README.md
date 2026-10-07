@@ -45,7 +45,7 @@ Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
 | Página | Quem acessa | O que faz |
 |---|---|---|
 | `/rh.html` · **Área do RH** | perfis RH e Administrador | Painel, análise das solicitações (aprovar, reprovar, reabrir, comentar — interno ou visível ao colaborador) e arquivo da folha |
-| `/admin.html` · **Administração** | somente Administrador | Base de elegibilidade, colaboradores (bloquear/liberar acesso), usuários e perfis, período e benefícios, suspensão do portal, auditoria e backup |
+| `/admin.html` · **Administração** | somente Administrador | Base de elegibilidade, colaboradores (bloquear/liberar acesso), usuários e perfis, período e benefícios, suspensão do portal, auditoria (com limpeza de registros), **exclusão definitiva de solicitações** e backup |
 
 Usuário inicial: `admin` (perfil Administrador), senha de `ADMIN_PASSWORD` (padrão local `ambar-rh`). Com os dados de demonstração
 há também `rh.teste` / `rh-teste-123` (perfil RH), para ver a diferença entre as áreas.
