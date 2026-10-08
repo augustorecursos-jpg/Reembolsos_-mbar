@@ -13,6 +13,7 @@ const Colaboradores = (() => {
   let lista = [];
   let editando = null; // CPF do colaborador aberto no formulário
   let opcoes = {};
+  let unidades = []; // lista oficial de filiais (regras.js)
   const $ = (id) => document.getElementById(id);
 
   function montar(container, { aoVerHistorico } = {}) {
@@ -49,7 +50,7 @@ const Colaboradores = (() => {
             <label class="rotulo">Matrícula<input class="campo" name="matricula" maxlength="30" required></label>
             <label class="rotulo largo">Nome completo<input class="campo" name="nome" maxlength="150" required></label>
             <label class="rotulo">E-mail <small>(opcional)</small><input class="campo" type="email" name="email" maxlength="150"></label>
-            <label class="rotulo">Filial / unidade<input class="campo" name="unidade" maxlength="80"></label>
+            <label class="rotulo">Filial / unidade<select class="campo" name="unidade" required><option value="">Selecione…</option></select></label>
             <label class="rotulo">Data de admissão<input class="campo" type="date" name="data_admissao"></label>
             <label class="rotulo">Sucedido<select class="campo" name="sucedido">
               <option value="">Pela data de admissão (até 2011)</option><option value="S">Sim</option><option value="N">Não</option></select></label>
@@ -100,6 +101,7 @@ const Colaboradores = (() => {
   }
 
   async function carregar() {
+    if (!unidades.length) unidades = await api('/api/admin/unidades');
     lista = await api('/api/admin/colaboradores');
     render();
   }
@@ -192,9 +194,15 @@ const Colaboradores = (() => {
     $('colab-modal-titulo').textContent = c ? c.nome : 'Incluir colaborador';
     $('colab-modal-sobre').textContent = c ? `CPF ${formatarCpf(c.cpf)}` : 'NOVO CADASTRO';
     f.cpf.readOnly = Boolean(c);
+    // Lista suspensa de filiais; uma unidade da base fora da lista aparece só para este cadastro, até ser trocada.
+    const atual = c && c.unidade && !unidades.includes(c.unidade) ? c.unidade : null;
+    f.unidade.innerHTML = '<option value="">Selecione…</option>'
+      + (atual ? `<option value="${esc(atual)}">${esc(atual)} (da base, fora da lista)</option>` : '')
+      + unidades.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+    f.unidade.value = c ? (c.unidade || '') : '';
     if (c) {
       f.cpf.value = formatarCpf(c.cpf);
-      for (const k of ['matricula', 'nome', 'email', 'unidade', 'data_admissao', 'data_desligamento']) f[k].value = c[k] || '';
+      for (const k of ['matricula', 'nome', 'email', 'data_admissao', 'data_desligamento']) f[k].value = c[k] || '';
       f.sucedido.value = c.sucedido_base === 1 ? 'S' : c.sucedido_base === 0 ? 'N' : '';
     }
     $('colab-salvar').textContent = c ? 'Salvar alterações' : 'Incluir colaborador';

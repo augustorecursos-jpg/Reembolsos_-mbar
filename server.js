@@ -705,8 +705,10 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
   res.json(lista);
 });
 
-/** Valida os dados cadastrais vindos do formulário do RH. */
-function lerCadastroColaborador(b) {
+app.get('/api/admin/unidades', exigirRh, (_req, res) => res.json(R.UNIDADES));
+
+/** Valida os dados cadastrais vindos do formulário do RH. unidadeAtual: aceita manter a unidade que veio da base. */
+function lerCadastroColaborador(b, unidadeAtual = null) {
   const nome = String(b.nome || '').trim().slice(0, 150);
   const matricula = String(b.matricula || '').trim().slice(0, 30);
   if (!nome) return { erro: 'Informe o nome.' };
@@ -717,10 +719,13 @@ function lerCadastroColaborador(b) {
   if (b.data_admissao && !dataAdm) return { erro: 'Data de admissão inválida.' };
   const dataDesl = b.data_desligamento ? R.normalizarData(b.data_desligamento) : null;
   if (b.data_desligamento && !dataDesl) return { erro: 'Data de desligamento inválida.' };
+  const unidade = String(b.unidade || '').trim();
+  if (!unidade) return { erro: 'Selecione a filial/unidade.' };
+  if (!R.UNIDADES.includes(unidade) && unidade !== unidadeAtual) return { erro: 'Selecione uma filial/unidade da lista.' };
   const suc = R.lerMarcador(b.sucedido);
   return {
     dados: {
-      nome, matricula, email, unidade: String(b.unidade || '').trim().slice(0, 80),
+      nome, matricula, email, unidade,
       data_admissao: dataAdm, data_desligamento: dataDesl, sucedido: suc === 'S' ? 1 : suc === 'N' ? 0 : null,
     },
   };
@@ -765,7 +770,7 @@ app.put('/api/admin/colaboradores/:cpf', exigirRh, (req, res) => {
   const cpf = normalizarCpf(req.params.cpf);
   const c = colaboradorPorCpf(cpf);
   if (!c) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
-  const { erro, dados: d } = lerCadastroColaborador(req.body || {});
+  const { erro, dados: d } = lerCadastroColaborador(req.body || {}, c.unidade);
   if (erro) return res.status(400).json({ erro });
   db.prepare(`UPDATE colaboradores SET matricula = ?, nome = ?, email = ?, unidade = ?, data_admissao = ?, sucedido = ?, data_desligamento = ?,
     atualizado_em = datetime('now') WHERE cpf = ?`).run(d.matricula, d.nome, d.email, d.unidade, d.data_admissao, d.sucedido, d.data_desligamento, cpf);

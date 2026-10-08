@@ -107,6 +107,68 @@ const CODIGOS = Object.keys(BENEFICIOS);
 
 const NIVEIS_ENSINO = ['Ensino fundamental', 'Ensino médio', 'Ensino médio técnico'];
 
+/** Filiais/unidades aceitas no cadastro manual do RH (lista suspensa; evita erros de digitação). */
+const UNIDADES = [
+  'FLUXUS',
+  'ARAUCARIA',
+  'PCH HIDROENERGIA',
+  'GREEN CARGO',
+  'BORBOREMA',
+  'MARACANAU',
+  'PALMEIRAS',
+  'PERNAMBUCO',
+  'GOM - CUIABA',
+  'NORTE FLUMINENSE',
+  'GOM - CACERES',
+  'PCH SALTO DO LAGES',
+  'PCH PISSARRAO',
+  'PCH SALTO DO MORAIS',
+  'PCH XICÃO',
+  'PCH SALTO DO PASSO VELHO',
+  'PCH SALTO DO VOLTAO',
+  'MAUA 3',
+  'PCH JACUTINGA',
+  'APARECIDA',
+  'ANAMÃ',
+  'PCH SANTA LUZIA',
+  'ANORI',
+  'CAAPIRANGA',
+  'CODAJÁS',
+  'PCH SALTO DO PARAOPEBA',
+  'RIO NEGRO',
+  'SANTA CRUZ',
+  'PCH MARTINS',
+  'HOLDING',
+  'CUIABA',
+  'COMERCIALIZADORA',
+  'JAPIIM',
+  'CANDIOTA',
+  'URUGUAIANA',
+  'JARAQUI',
+  'TAMBAQUI',
+  'PIRARUCU',
+  'HOLDING NORTE',
+  'ANDRADINA',
+  'TUCUNARÉ',
+  'PORAQUÊ',
+  'ENERGIAS RENOVÁVEIS',
+  'LAGES BIOENERGETICA',
+  'MGAS',
+  'GOIÂNIA II',
+  'CUIABA II',
+  'UTE DISTRITO',
+  'UTE FLORESTA',
+  'UTE MONTE CRISTO',
+  'UTE MONTE CRISTO SUCUBA',
+  'FEIJÓ',
+  'TARAUACA',
+  'CRUZEIRO DO SUL',
+  'UTE ARAUCARIA',
+  'UTE MANACAPURU',
+  'UTE NORTE FLUMINENSE',
+  'MGAS - SANTA CATARINA',
+].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
 /** Configuração padrão do período e dos benefícios (o RH altera em Configurações). */
 function configuracaoPadrao() {
   return {
@@ -386,7 +448,7 @@ function formatarReais(centavos) {
 }
 
 module.exports = {
-  FUSO, PARENTESCOS, DOCUMENTOS, BENEFICIOS, CODIGOS, NIVEIS_ENSINO,
+  FUSO, PARENTESCOS, DOCUMENTOS, BENEFICIOS, CODIGOS, NIVEIS_ENSINO, UNIDADES,
   configuracaoPadrao, mesclarConfiguracao,
   hojeISO, normalizarData, diasEntre, somarMeses, idadeEm, mesesDeIdade, competenciaDe, formatarCompetencia,
   situacaoPeriodo, validarDataDocumento,
