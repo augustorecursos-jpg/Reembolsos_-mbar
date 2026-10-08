@@ -36,8 +36,8 @@ async function carregarVisao() {
 
 // ---------- Base de elegibilidade ----------
 const CAMPOS = {
-  colab: ['cpf', 'matricula', 'nome', 'email', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos'],
-  dep: ['cpf_titular', 'nome', 'cpf', 'parentesco', 'data_nascimento', 'medicamento', 'educacional', 'creche', 'oculos'],
+  colab: ['cpf', 'matricula', 'nome', 'email', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos', 'material'],
+  dep: ['cpf_titular', 'nome', 'cpf', 'parentesco', 'data_nascimento', 'medicamento', 'educacional', 'creche', 'oculos', 'material'],
 };
 // Nomes alternativos aceitos no cabeçalho da planilha.
 // Ex.: "Filial", "Lotação", "Data de Admissão", "CPF do Titular" e "Matrícula/Chapa" são reconhecidos.
@@ -46,6 +46,7 @@ const SINONIMOS = {
   filial: 'unidade', filiall: 'unidade', local: 'unidade', local_trabalho: 'unidade',
   admissao: 'data_admissao', desligamento: 'data_desligamento', nascimento: 'data_nascimento', titular: 'cpf_titular',
   creche_baba: 'creche', baba: 'creche', educacao: 'educacional', medicamentos: 'medicamento', nome_dependente: 'nome', dependente: 'nome',
+  material_escolar: 'material', material_escolar_uniforme: 'material', uniforme: 'material', material_uniforme: 'material',
   nome_completo: 'nome', nome_colaborador: 'nome', grau_parentesco: 'parentesco',
 };
 /** Normaliza o cabeçalho: sem acentos, maiúsculas ou espaços, e sem “de/do/da” (“Data de Admissão” → data_admissao). */
@@ -251,9 +252,9 @@ async function carregarRegras() {
     ${Object.entries(beneficios).map(([cod, b]) => {
       const c = config.beneficios[cod];
       let limites;
-      if (b.escopo === 'dependente_mes') {
+      if (b.escopo === 'dependente_mes' || b.escopo === 'dependente_janela') {
         limites = `<div class="linha-form" style="margin:0"><label class="rotulo">Sucedido (R$)${campo(cod, 'limiteSucedido', emReais(c.limiteSucedido))}</label>
-          <label class="rotulo">Não sucedido (R$)${campo(cod, 'limiteNaoSucedido', emReais(c.limiteNaoSucedido))}</label></div><small class="q-dica">por dependente, por mês</small>`;
+          <label class="rotulo">Não sucedido (R$)${campo(cod, 'limiteNaoSucedido', emReais(c.limiteNaoSucedido))}</label></div><small class="q-dica">${b.escopo === 'dependente_janela' ? 'por dependente, em fevereiro e em julho (um reembolso por mês, sem acumular)' : 'por dependente, por mês'}</small>`;
       } else if (b.escopo === 'familia_mes') {
         limites = `<label class="rotulo">Grupo familiar / mês (R$)${campo(cod, 'limite', emReais(c.limite))}</label>`;
       } else {

@@ -91,10 +91,13 @@ function desenharCalendario(hoje, p) {
       form.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
     }
     document.getElementById('lista-beneficios').innerHTML = r.beneficios.map(b => {
-      const valor = b.escopo === 'dependente_mes'
+      const porDependente = b.escopo === 'dependente_mes' || b.escopo === 'dependente_janela';
+      const valor = porDependente
         ? `até ${reais(b.limite_sucedido)}` : `até ${reais(b.limite)}`;
       const regra = b.escopo === 'dependente_mes'
         ? `por dependente/mês (${reais(b.limite_nao_sucedido)} para não sucedidos)`
+        : b.escopo === 'dependente_janela'
+          ? `por dependente, em fevereiro e julho (${reais(b.limite_nao_sucedido)} para não sucedidos)`
         : b.escopo === 'familia_mes' ? 'por mês, para o grupo familiar' : `por pessoa, a cada ${b.periodo_meses} meses`;
       return `
         <article class="beneficio">

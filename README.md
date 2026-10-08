@@ -1,7 +1,7 @@
 # Portal de Reembolsos · Âmbar Energia (RH)
 
 Portal para recebimento, análise, aprovação e controle das solicitações de reembolso dos colaboradores
-(**medicamento, educacional, creche/babá e óculos**), conforme o *Documento de Requisitos – Portal de Reembolso*.
+(**medicamento, educacional, creche/babá, óculos e material escolar/uniforme**), conforme o *Documento de Requisitos – Portal de Reembolso*.
 Substitui o envio de documentos por e-mail, mantém o histórico rastreável e gera a base mensal para a folha de pagamento.
 
 Mesma arquitetura da plataforma de treinamento (Trilha DHO, repositório `DHO-mbar`): Node.js + SQLite nativo e
@@ -98,9 +98,10 @@ Para atualizar depois de mudanças nas telas (requer Playwright: `npm i -D playw
 | Educacional | Por dependente/mês: **R$ 733,63** (sucedido) / **R$ 600,00** (não sucedido). Filhos, enteados e netos com tutela, **7 a 17 anos resguardado o ano letivo** (quem faz 18 no ano segue elegível até dezembro). Nível de ensino obrigatório. |
 | Creche/Babá | Por dependente/mês: **R$ 1.103,17** (sucedido) / **R$ 800,00** (não sucedido). Filhos, enteados e netos com tutela, **de 6 meses a 6 anos**. |
 | Óculos | **R$ 1.500,00 por beneficiário a cada 18 meses** (pela data do documento). Somente titular e cônjuge. |
+| Material Escolar/Uniforme | Por dependente: **R$ 1.467,26** (sucedido) / **R$ 1.200,00** (não sucedido), **somente em fevereiro e em julho**. Filhos de **7 a 17 anos**. Um reembolso por dependente em cada mês (em análise ou aprovado bloqueia novo envio; reprovado libera); o saldo não usado **não acumula** para o mês seguinte. Fora de fevereiro/julho o portal mostra a próxima janela. Nota fiscal obrigatória. |
 | Saldo | Aprovadas contam pelo valor aprovado e **em análise pelo valor solicitado** (evita enviar acima do limite enquanto a análise não sai); reprovadas liberam o saldo. O RH não consegue aprovar acima do saldo. |
 | Sucedido | Coluna `SUCEDIDO` (S/N) da base; se vazia, sucedido = admitido até 31/12/2011. |
-| Elegibilidade da base | Colunas `MEDICAMENTO`, `EDUCACIONAL`, `CRECHE`, `OCULOS` em colaboradores e dependentes: **S** libera (ex.: exceções aprovadas pelo RH), **N** bloqueia, **vazio** aplica a regra do benefício. |
+| Elegibilidade da base | Colunas `MEDICAMENTO`, `EDUCACIONAL`, `CRECHE`, `OCULOS`, `MATERIAL` em colaboradores e dependentes: **S** libera (ex.: exceções aprovadas pelo RH), **N** bloqueia, **vazio** aplica a regra do benefício. |
 | Desligados | Removidos na carga *substituir* (ou bloqueados manualmente). `DATA_DESLIGAMENTO` impede documentos posteriores a ela. |
 | Limites e verbas | Editáveis em Configurações (reajustes de valores e código da verba de folha de cada benefício). |
 

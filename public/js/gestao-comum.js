@@ -1,6 +1,6 @@
 // Código comum às áreas internas: Área do RH (rh.html) e Administração (admin.html).
 const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
-const ICONES = { medicamento: '💊', educacional: '🎒', creche: '🧸', oculos: '👓' };
+const ICONES = { medicamento: '💊', educacional: '🎒', creche: '🧸', oculos: '👓', material: '✏️' };
 const PERFIS = { rh: 'RH (análise)', admin: 'Administrador' };
 const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 

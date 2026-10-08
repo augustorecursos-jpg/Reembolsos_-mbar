@@ -86,6 +86,22 @@ const BENEFICIOS = {
     observacao: 'Limite por beneficiário a cada 18 meses, considerando o histórico de reembolsos.',
     verba: '',
   },
+  material: {
+    nome: 'Reembolso Material Escolar/Uniforme',
+    curto: 'Material Escolar',
+    icone: '✏️',
+    escopo: 'dependente_janela', // limite por dependente em meses definidos (janelas), sem acumular entre elas
+    meses: [2, 7], // fevereiro e julho
+    limiteSucedido: 146726,
+    limiteNaoSucedido: 120000,
+    titular: false,
+    parentescos: ['filho'],
+    faixa: 'educacional',
+    documentos: ['nota_fiscal'],
+    elegiveis: 'Filhos de 7 a 17 anos (resguardado o ano letivo).',
+    observacao: 'Solicitado somente em fevereiro e em julho: um reembolso por dependente em cada mês, e o saldo de um mês não acumula para o outro.',
+    verba: '',
+  },
 };
 const CODIGOS = Object.keys(BENEFICIOS);
 
@@ -109,6 +125,7 @@ function configuracaoPadrao() {
         limiteSucedido: b.limiteSucedido ?? null,
         limiteNaoSucedido: b.limiteNaoSucedido ?? null,
         periodoMeses: b.periodoMeses ?? null,
+        meses: b.meses ?? null,
       }];
     })),
   };
@@ -124,8 +141,9 @@ function mesclarConfiguracao(salva) {
 
 // ---------- datas ----------
 
-/** Data de hoje (AAAA-MM-DD) no fuso de Brasília. */
+/** Data de hoje (AAAA-MM-DD) no fuso de Brasília. HOJE_SIMULADO (fora de produção) permite testar outras datas. */
 function hojeISO(agora = new Date()) {
+  if (process.env.HOJE_SIMULADO && process.env.NODE_ENV !== 'production' && arguments.length === 0) return process.env.HOJE_SIMULADO;
   return new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora);
 }
 
@@ -317,8 +335,27 @@ function elegibilidade(codigo, colab, dep, hoje, config) {
 /** Limite (em centavos) aplicável ao colaborador para o benefício. */
 function limiteDoBeneficio(codigo, colab, config) {
   const cfg = config.beneficios[codigo];
-  if (BENEFICIOS[codigo].escopo === 'dependente_mes') return ehSucedido(colab) ? cfg.limiteSucedido : cfg.limiteNaoSucedido;
+  if (limitePorPerfil(codigo)) return ehSucedido(colab) ? cfg.limiteSucedido : cfg.limiteNaoSucedido;
   return cfg.limite;
+}
+
+/** Benefícios com limite diferente para sucedidos e não sucedidos (por dependente). */
+const limitePorPerfil = (codigo) => ['dependente_mes', 'dependente_janela'].includes(BENEFICIOS[codigo].escopo);
+
+const NOMES_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+/**
+ * Benefícios solicitados só em meses definidos (material escolar: fevereiro e julho).
+ * Devolve se a competência está numa janela e qual é a próxima (AAAA-MM). null para os demais benefícios.
+ */
+function janelaDeSolicitacao(codigo, competencia, config) {
+  const b = BENEFICIOS[codigo];
+  if (b.escopo !== 'dependente_janela') return null;
+  const meses = [...((config.beneficios[codigo] || {}).meses || b.meses)].sort((x, y) => x - y);
+  const [ano, mes] = competencia.split('-').map(Number);
+  const depois = meses.find(m => m > mes);
+  const proxima = depois ? `${ano}-${String(depois).padStart(2, '0')}` : `${ano + 1}-${String(meses[0]).padStart(2, '0')}`;
+  return { aberta: meses.includes(mes), meses, nomes: meses.map(m => NOMES_MESES[m - 1]), proxima };
 }
 
 /**
@@ -354,5 +391,5 @@ module.exports = {
   hojeISO, normalizarData, diasEntre, somarMeses, idadeEm, mesesDeIdade, competenciaDe, formatarCompetencia,
   situacaoPeriodo, validarDataDocumento,
   lerMarcador, normalizarParentesco, ehSucedido, dentroDaFaixa, elegibilidade,
-  limiteDoBeneficio, janelaDoLimite, paraCentavos, formatarReais,
+  limiteDoBeneficio, limitePorPerfil, janelaDeSolicitacao, janelaDoLimite, paraCentavos, formatarReais,
 };

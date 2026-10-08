@@ -74,7 +74,7 @@ const capa = `
     <h1>Portal de <em>Reembolsos</em></h1>
     <p class="capa-sub">Passo a passo para enviar suas solicitações de reembolso e acompanhar a análise do RH.</p>
     <ul class="capa-lista">
-      <li>💊 Medicamento</li><li>🎒 Educacional</li><li>🧸 Creche/Babá</li><li>👓 Óculos</li>
+      <li>💊 Medicamento</li><li>🎒 Educacional</li><li>🧸 Creche/Babá</li><li>👓 Óculos</li><li>✏️ Material Escolar</li>
     </ul>
   </div>
   <div class="capa-rodape"><span>Recursos Humanos</span><span>${URL_PORTAL.replace(/^https?:\/\//, '')}</span></div>
@@ -93,7 +93,7 @@ const sumario = [
 
 const p1 = folha('Boas-vindas!', 'ANTES DE COMEÇAR', `
   <p class="lead">O <strong>Portal de Reembolsos</strong> reúne em um só lugar as solicitações de reembolso de medicamento, educacional,
-  creche/babá e óculos. Você envia os comprovantes pelo portal, acompanha o saldo de cada benefício e vê o resultado da análise do RH —
+  creche/babá, óculos e material escolar/uniforme. Você envia os comprovantes pelo portal, acompanha o saldo de cada benefício e vê o resultado da análise do RH —
   <strong>sem e-mail e sem papel</strong>.</p>
 
   <div class="duas">
@@ -157,6 +157,7 @@ const linhasBeneficios = [
   ['educacional', `até ${reais(73363)} (sucedidos) ou ${reais(60000)} por dependente/mês`, 'Filhos, enteados e netos com tutela, de 7 a 17 anos, no ensino fundamental, médio ou técnico.', 'Boleto ou recibo + comprovante de pagamento'],
   ['creche', `até ${reais(110317)} (sucedidos) ou ${reais(80000)} por dependente/mês`, 'Filhos, enteados e netos com tutela, de 6 meses a 6 anos.', 'Boleto ou recibo + comprovante de pagamento'],
   ['oculos', `até ${reais(150000)} por pessoa a cada 18 meses`, 'Titular e cônjuge.', 'Receita médica + nota fiscal'],
+  ['material', `até ${reais(146726)} (sucedidos) ou ${reais(120000)} por dependente, em fevereiro e em julho`, 'Filhos de 7 a 17 anos. Um reembolso por filho em cada mês; o saldo não acumula.', 'Nota fiscal'],
 ];
 const p4 = folha('Seus benefícios e limites', 'PASSO 3', `
   <p class="lead">Clique em um benefício no menu para ver as regras, os beneficiários elegíveis e o saldo de cada um.</p>
@@ -324,7 +325,7 @@ h1, h2, h3 { font-family: 'Montserrat', sans-serif; color: var(--marinho); margi
 .tela-img img { display: block; width: 100%; height: auto; }
 .tela-img.recortada { position: relative; }
 .tela-recorte { position: absolute; }
-.tela.media { width: 82%; align-self: center; }
+.tela.media { width: 72%; align-self: center; }
 .tela.pequena { width: 100%; }
 .tela figcaption { text-align: center; font-size: 8.5pt; color: var(--suave); margin-top: 2mm; font-weight: 700; }
 .num-tela { position: absolute; width: 7.5mm; height: 7.5mm; border-radius: 50%; display: grid; place-items: center; background: var(--laranja); color: #fff;

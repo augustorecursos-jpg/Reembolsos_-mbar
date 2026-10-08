@@ -29,6 +29,7 @@ const pctUso = (usado, limite) => (limite ? Math.min(100, Math.round((usado / li
 function textoEscopo(b) {
   if (b.escopo === 'familia_mes') return 'por mês, para todo o grupo familiar';
   if (b.escopo === 'dependente_mes') return 'por dependente, por mês';
+  if (b.escopo === 'dependente_janela') return `por dependente, em ${(b.janela?.nomes || ['fevereiro', 'julho']).join(' e ')} (o saldo não acumula)`;
   return `por beneficiário, a cada ${b.periodo_meses} meses`;
 }
 
@@ -116,13 +117,13 @@ function cartaoBeneficio(b) {
       <span class="tema-topo"><span class="ic">${b.icone}</span><strong>${esc(b.nome)}</strong></span>
       <span class="tema-meta">Limite de ${reais(b.limite)} ${textoEscopo(b)}</span>
       ${saldoHtml}
-      <span class="tema-acao"><span class="etiqueta ${s.disponivel ? 'ok' : 'neutra'}">${s.disponivel ? 'Saldo disponível' : 'Limite atingido'}</span><span class="tema-cta">Ver detalhes →</span></span>
+      <span class="tema-acao"><span class="etiqueta ${s.disponivel ? 'ok' : 'neutra'}">${s.disponivel ? 'Saldo disponível' : b.janela && !b.janela.aberta ? `Abre em ${competenciaBR(b.janela.proxima)}` : 'Limite atingido'}</span><span class="tema-cta">Ver detalhes →</span></span>
     </button>`;
 }
 
 function itemSolicitacao(s) {
   const b = beneficio(s.beneficio) || { icone: '📄' };
-  const icones = { medicamento: '💊', educacional: '🎒', creche: '🧸', oculos: '👓' };
+  const icones = { medicamento: '💊', educacional: '🎒', creche: '🧸', oculos: '👓', material: '✏️' };
   return `
     <button class="sol-item" data-sol="${s.id}">
       <span class="ic">${icones[s.beneficio] || b.icone}</span>
@@ -211,6 +212,8 @@ function renderBeneficio(codigo) {
           <td>${p.aberto && x.disponivel ? `<a class="btn btn-laranja btn-sm" href="#/nova/${b.codigo}/${x.id}">Solicitar</a>` : ''}</td></tr>`).join('')}
       </table></div>
       ${b.escopo === 'familia_mes' ? '<p class="q-dica" style="margin:.8rem 0 0">O limite é compartilhado: o valor utilizado por qualquer pessoa do grupo familiar reduz o saldo de todos no mês.</p>' : ''}
+      ${b.escopo === 'dependente_janela' ? `<p class="q-dica" style="margin:.8rem 0 0">Um reembolso por dependente em cada mês de solicitação (${esc(b.janela.nomes.join(' e '))}). O valor não utilizado não acumula para o mês seguinte.${b.janela.aberta ? '' : ` Próxima janela: <strong>${esc(b.janela.proxima_nome)}</strong>.`}</p>` : ''}
+      ${b.beneficiarios.some(x => x.bloqueio) && b.janela?.aberta ? `<ul class="q-dica" style="margin:.5rem 0 0">${b.beneficiarios.filter(x => x.bloqueio).map(x => `<li>${esc(x.nome.split(' ')[0])}: ${esc(x.bloqueio)}</li>`).join('')}</ul>` : ''}
     </div>
     <h2 class="titulo-secao">Histórico deste benefício</h2>
     <div class="cartao">
@@ -223,6 +226,12 @@ function renderBeneficio(codigo) {
 
 // ---------- Nova solicitação ----------
 
+/** Motivo curto para o beneficiário sem saldo (material escolar: fora da janela ou já solicitado nela). */
+function motivoSemSaldo(b, x) {
+  if (!x.bloqueio || !b.janela) return 'limite atingido';
+  return b.janela.aberta ? `já solicitado · próximo em ${b.janela.proxima_nome}` : `disponível em ${b.janela.proxima_nome}`;
+}
+
 function opcaoBeneficiario(b, x, marcado) {
   const semSaldo = !x.disponivel;
   return `
@@ -230,7 +239,7 @@ function opcaoBeneficiario(b, x, marcado) {
       <input type="radio" name="beneficiario" value="${x.id}" ${marcado ? 'checked' : ''} ${semSaldo ? 'disabled' : ''}>
       <span><span class="ic">${x.tipo === 'titular' ? '🙋' : '👤'}</span><span>
         <strong>${esc(x.nome)}</strong>
-        <small>${esc(x.rotulo)} · ${semSaldo ? 'limite atingido' : `saldo ${reais(x.disponivel)}`}</small>
+        <small>${esc(x.rotulo)} · ${semSaldo ? esc(motivoSemSaldo(b, x)) : `saldo ${reais(x.disponivel)}`}</small>
       </span></span>
     </label>`;
 }
@@ -412,7 +421,7 @@ function renderNova(codigoInicial, beneficiarioInicial) {
     if (v && saldoAtual && v > saldoAtual.disponivel) {
       msgs.push(['erro', saldoAtual.disponivel
         ? `O valor ultrapassa o saldo disponível (${reais(saldoAtual.disponivel)}). Ajuste o valor solicitado para até o saldo.`
-        : 'Limite atingido para este beneficiário no período. Não há saldo disponível.']);
+        : saldoAtual.bloqueio || 'Limite atingido para este beneficiário no período. Não há saldo disponível.']);
     }
     alerta.innerHTML = msgs.map(([t, m]) => `<div class="alerta ${t}">⚠️ <span>${esc(m)}</span></div>`).join('');
     const resumo = document.getElementById('resumo-envio');

@@ -156,3 +156,9 @@ a.lateral-item { text-decoration: none; }
 .qr-modal { max-width: 500px; }
 .qr-modal header > div { flex: 1; }
 .qr-modal .det-corpo { gap: .9rem; }
+
+/* Tabela de beneficiários e saldos (página do benefício) */
+.tabela-wrap { overflow-x: auto; }
+.tabela { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.tabela th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-suave); padding: .6rem; border-bottom: 2px solid var(--linha); white-space: nowrap; }
+.tabela td { padding: .6rem; border-bottom: 1px solid var(--fundo-2); }

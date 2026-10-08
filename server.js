@@ -157,19 +157,37 @@ const registrarComentario = db.prepare("INSERT INTO eventos (solicitacao_id, eve
 function usoDoLimite({ cpf, beneficio, dependenteId, competencia, referencia, excluirId = 0 }, config) {
   const b = R.BENEFICIOS[beneficio];
   const janela = R.janelaDoLimite(beneficio, config, competencia, referencia);
-  let sql = `SELECT COALESCE(SUM(CASE WHEN status = 'aprovado' THEN valor_aprovado ELSE valor_solicitado END), 0) AS usado
+  let sql = `SELECT COALESCE(SUM(CASE WHEN status = 'aprovado' THEN valor_aprovado ELSE valor_solicitado END), 0) AS usado, COUNT(*) AS qtd
              FROM solicitacoes WHERE cpf = ? AND beneficio = ? AND status IN ('analise', 'aprovado') AND id <> ?`;
   const params = [cpf, beneficio, excluirId];
   if (b.escopo !== 'familia_mes') { sql += ' AND dependente_id IS ?'; params.push(dependenteId ?? null); }
   if (janela.tipo === 'competencia') { sql += ' AND competencia = ?'; params.push(competencia); }
   else { sql += ' AND data_documento > ?'; params.push(janela.desde); }
-  return { usado: db.prepare(sql).get(...params).usado, janela };
+  const r = db.prepare(sql).get(...params);
+  return { usado: r.usado, qtd: r.qtd, janela };
 }
 
+const mesAno = (comp) => { const [a, m] = comp.split('-').map(Number); return `${['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][m - 1]}/${a}`; };
+
+/**
+ * Saldo de um beneficiário. Para benefícios com janela (material escolar: fevereiro e julho), o saldo é zero
+ * fora da janela e depois que já existe uma solicitação em análise ou aprovada para o dependente na janela
+ * (um reembolso por janela; o saldo não acumula para a próxima). bloqueio explica o motivo.
+ */
 function saldo(colab, beneficio, dependenteId, competencia, referencia, config, excluirId) {
   const limite = R.limiteDoBeneficio(beneficio, colab, config);
-  const { usado, janela } = usoDoLimite({ cpf: colab.cpf, beneficio, dependenteId, competencia, referencia, excluirId }, config);
-  return { limite, usado, disponivel: Math.max(0, limite - usado), janela };
+  const { usado, qtd, janela } = usoDoLimite({ cpf: colab.cpf, beneficio, dependenteId, competencia, referencia, excluirId }, config);
+  let disponivel = Math.max(0, limite - usado);
+  let bloqueio = null;
+  const jan = R.janelaDeSolicitacao(beneficio, competencia, config);
+  if (jan && !jan.aberta) {
+    disponivel = 0;
+    bloqueio = `Solicitado somente em ${jan.nomes.join(' e ')}. Próxima janela: ${mesAno(jan.proxima)}.`;
+  } else if (jan && qtd > 0) {
+    disponivel = 0;
+    bloqueio = `Já existe uma solicitação deste dependente em ${mesAno(competencia)}. O próximo reembolso poderá ser solicitado em ${mesAno(jan.proxima)}.`;
+  }
+  return { limite, usado, disponivel, janela, bloqueio, janela_solicitacao: jan };
 }
 
 function dependentesDe(cpf) {
@@ -191,13 +209,14 @@ function beneficiosDoColaborador(colab, hoje, config) {
       .filter(p => R.elegibilidade(codigo, colab, p.dep, hoje, config).elegivel)
       .map(p => {
         const s = saldo(colab, codigo, p.dep ? p.dep.id : null, competencia, hoje, config);
-        return { id: p.id, nome: p.nome, tipo: p.tipo, rotulo: p.rotulo, limite: s.limite, usado: s.usado, disponivel: s.disponivel };
+        return { id: p.id, nome: p.nome, tipo: p.tipo, rotulo: p.rotulo, limite: s.limite, usado: s.usado, disponivel: s.disponivel, bloqueio: s.bloqueio };
       });
     if (!beneficiarios.length) continue;
     const limite = R.limiteDoBeneficio(codigo, colab, config);
     lista.push({
       codigo, nome: b.nome, curto: b.curto, icone: b.icone, escopo: b.escopo, limite,
       periodo_meses: config.beneficios[codigo].periodoMeses,
+      janela: (() => { const j = R.janelaDeSolicitacao(codigo, competencia, config); return j && { ...j, proxima_nome: mesAno(j.proxima) }; })(),
       elegiveis: b.elegiveis, observacao: b.observacao,
       documentos: b.documentos.map(d => ({ tipo: d, nome: R.DOCUMENTOS[d] })),
       beneficiarios,
@@ -397,9 +416,11 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
   // Verificação do limite e gravação sem nenhuma espera entre elas (node:sqlite é síncrono),
   // então duas solicitações simultâneas não passam juntas do limite.
   const s = saldo(colab, beneficio, dep ? dep.id : null, competencia, dataDoc, config);
+  if (s.bloqueio) return falhar(s.bloqueio);
   if (valor > s.disponivel) {
     const onde = b.escopo === 'familia_mes' ? 'para o grupo familiar neste mês'
       : b.escopo === 'dependente_mes' ? 'para este dependente neste mês'
+        : b.escopo === 'dependente_janela' ? `para este dependente em ${mesAno(competencia)}`
         : `para este beneficiário nos últimos ${s.janela.meses} meses`;
     return falhar(s.disponivel > 0
       ? `Valor acima do saldo disponível ${onde}: ${R.formatarReais(s.disponivel)} (limite ${R.formatarReais(s.limite)}). Ajuste o valor solicitado.`
@@ -571,7 +592,7 @@ app.get('/api/admin/solicitacoes/:id', exigirRh, (req, res) => {
     anexos: db.prepare('SELECT id, tipo, nome_original, mime, tamanho FROM anexos WHERE solicitacao_id = ? ORDER BY id').all(s.id)
       .map(a => ({ ...a, tipo_nome: R.DOCUMENTOS[a.tipo] || 'Outro documento' })),
     eventos: db.prepare('SELECT evento, detalhe, por, em, interno FROM eventos WHERE solicitacao_id = ? ORDER BY id').all(s.id),
-    saldo: { limite: sal.limite, usado: sal.usado, disponivel: sal.disponivel, escopo: b.escopo, janela: sal.janela },
+    saldo: { limite: sal.limite, usado: sal.usado, disponivel: sal.disponivel, escopo: b.escopo, janela: sal.janela, bloqueio: sal.bloqueio },
     historico,
     dias_documento: R.diasEntre(s.data_documento, s.criado_em.slice(0, 10)),
   });
@@ -597,6 +618,7 @@ app.post('/api/admin/solicitacoes/:id/decidir', exigirRh, (req, res) => {
     if (valor > s.valor_solicitado) return res.status(400).json({ erro: 'O valor aprovado não pode ser maior que o valor solicitado.' });
     const colab = db.prepare('SELECT * FROM colaboradores WHERE cpf = ?').get(s.cpf) || {};
     const sal = saldo({ ...colab, cpf: s.cpf, sucedido: s.sucedido }, s.beneficio, s.dependente_id, s.competencia, s.data_documento, config, s.id);
+    if (sal.bloqueio) return res.status(400).json({ erro: `Não é possível aprovar: ${sal.bloqueio}` });
     if (valor > sal.disponivel) {
       return res.status(400).json({ erro: `O valor ultrapassa o saldo do limite (${R.formatarReais(sal.disponivel)} disponível de ${R.formatarReais(sal.limite)}). Aprove até o saldo ou reprove.` });
     }

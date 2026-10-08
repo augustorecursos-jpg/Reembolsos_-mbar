@@ -119,6 +119,7 @@ const TEXTO_ESCOPO = {
   familia_mes: 'grupo familiar na competência',
   dependente_mes: 'beneficiário na competência',
   beneficiario_periodo: 'beneficiário no período',
+  dependente_janela: 'dependente no mês da janela',
 };
 
 async function abrirAnalise(id) {

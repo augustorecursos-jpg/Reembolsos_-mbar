@@ -105,3 +105,17 @@ test('conversões de data, valor e parentesco', () => {
   assert.equal(R.normalizarParentesco('Enteada'), 'enteado');
   assert.equal(R.normalizarParentesco('Neta'), 'neto');
 });
+
+test('material escolar/uniforme: filhos de 7 a 17 anos, limites e janelas de fevereiro e julho', () => {
+  const hoje = '2027-02-05';
+  assert.equal(R.limiteDoBeneficio('material', sucedido, config), 146726);
+  assert.equal(R.limiteDoBeneficio('material', naoSucedido, config), 120000);
+  assert.equal(R.elegibilidade('material', sucedido, null, hoje, config).elegivel, false);
+  assert.equal(R.elegibilidade('material', sucedido, dep('filho', '2016-04-22'), hoje, config).elegivel, true);
+  assert.equal(R.elegibilidade('material', sucedido, dep('filho', '2024-01-10'), hoje, config).elegivel, false);
+  assert.equal(R.elegibilidade('material', sucedido, dep('conjuge', '1980-07-10'), hoje, config).elegivel, false);
+  assert.deepEqual(R.janelaDeSolicitacao('material', '2027-02', config), { aberta: true, meses: [2, 7], nomes: ['fevereiro', 'julho'], proxima: '2027-07' });
+  assert.equal(R.janelaDeSolicitacao('material', '2027-07', config).proxima, '2028-02');
+  assert.deepEqual(R.janelaDeSolicitacao('material', '2026-10', config), { aberta: false, meses: [2, 7], nomes: ['fevereiro', 'julho'], proxima: '2027-02' });
+  assert.equal(R.janelaDeSolicitacao('educacional', '2026-10', config), null);
+});

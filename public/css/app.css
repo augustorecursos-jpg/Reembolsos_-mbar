@@ -22,16 +22,16 @@ body.app { display: flex; min-height: 100vh; }
 .lateral-item .ic { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; background: rgba(255, 255, 255, .08); display: grid; place-items: center; font-size: .95rem; }
 .lateral-item .qtd { margin-left: auto; min-width: 24px; height: 22px; padding: 0 7px; border-radius: 999px; background: rgba(255, 255, 255, .12); display: grid; place-items: center; font-size: .72rem; font-weight: 700; }
 .lateral-item .qtd.ok { background: var(--destaque); color: #fff; }
-.lateral-rodape { margin-top: auto; padding-top: .8rem; padding-bottom: 64px; }
+.lateral-rodape { margin-top: auto; padding-top: .6rem; padding-bottom: 56px; }
 
 /* Temas no menu lateral: cards com brilho */
 #lista-modulos {
-  flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: .55rem;
+  flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: .45rem;
   margin: 0 -6px; padding: 4px 6px 10px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .25) transparent;
 }
 .tema-lateral {
   position: relative; display: flex; align-items: center; gap: .7rem; width: 100%; text-align: left; color: #fff;
-  padding: .7rem .75rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .14);
+  padding: .55rem .75rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .14);
   background: linear-gradient(135deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03));
   box-shadow: 0 4px 14px -8px rgba(0, 0, 0, .5);
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
