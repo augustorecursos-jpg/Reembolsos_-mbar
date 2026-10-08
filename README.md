@@ -44,8 +44,8 @@ Demonstração (após `npm run seed`) — colaborador entra com o **CPF**:
 
 | Página | Quem acessa | O que faz |
 |---|---|---|
-| `/rh.html` · **Área do RH** | perfis RH e Administrador | Painel, análise das solicitações (aprovar, reprovar, reabrir, comentar — interno ou visível ao colaborador) e arquivo da folha |
-| `/admin.html` · **Administração** | somente Administrador | Base de elegibilidade, colaboradores (bloquear/liberar acesso), usuários e perfis, período e benefícios, suspensão do portal, auditoria (com limpeza de registros), **exclusão definitiva de solicitações** e backup |
+| `/rh.html` · **Área do RH** | perfis RH e Administrador | Painel, análise das solicitações (aprovar, reprovar, reabrir, comentar — interno ou visível ao colaborador), arquivo da folha e **cadastro manual de colaboradores** (incluir, editar, dependentes, bloquear/liberar, excluir/restaurar acesso) |
+| `/admin.html` · **Administração** | somente Administrador | Tudo da Área do RH, mais: **importação** da base de elegibilidade (só o administrador importa planilhas), colaboradores, usuários e perfis, período e benefícios, suspensão do portal, auditoria (com limpeza de registros), **exclusão definitiva de solicitações** e backup |
 
 Usuário inicial: `admin` (perfil Administrador), senha de `ADMIN_PASSWORD` (padrão local `ambar-rh`). Com os dados de demonstração
 há também `rh.teste` / `rh-teste-123` (perfil RH), para ver a diferença entre as áreas.
@@ -102,7 +102,8 @@ Para atualizar depois de mudanças nas telas (requer Playwright: `npm i -D playw
 | Saldo | Aprovadas contam pelo valor aprovado e **em análise pelo valor solicitado** (evita enviar acima do limite enquanto a análise não sai); reprovadas liberam o saldo. O RH não consegue aprovar acima do saldo. |
 | Sucedido | Coluna `SUCEDIDO` (S/N) da base; se vazia, sucedido = admitido até 31/12/2011. |
 | Elegibilidade da base | Colunas `MEDICAMENTO`, `EDUCACIONAL`, `CRECHE`, `OCULOS`, `MATERIAL` em colaboradores e dependentes: **S** libera (ex.: exceções aprovadas pelo RH), **N** bloqueia, **vazio** aplica a regra do benefício. |
-| Desligados | Removidos na carga *substituir* (ou bloqueados manualmente). `DATA_DESLIGAMENTO` impede documentos posteriores a ela. |
+| Desligados | Removidos na carga *substituir* ou pelo RH (“Excluir acesso”). `DATA_DESLIGAMENTO` impede documentos posteriores a ela. |
+| Acesso do colaborador | **Bloquear**: tira o acesso na hora e continua valendo após novas cargas da base. **Excluir acesso**: tira da lista e do portal; volta se o CPF vier numa nova carga ou se o RH restaurar. Nenhuma das duas apaga o cadastro nem as solicitações (histórico, folha e relatórios mantidos); dependentes removidos também mantêm o histórico. Tudo fica na auditoria. |
 | Limites e verbas | Editáveis em Configurações (reajustes de valores e código da verba de folha de cada benefício). |
 
 Os dados cadastrais (matrícula, unidade, perfil) são **copiados na solicitação** no momento do envio, para o relatório

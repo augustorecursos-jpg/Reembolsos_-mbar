@@ -71,3 +71,25 @@
 }
 .login-cartao .login-marca { margin: 0 auto .4rem; }
 .login-cartao a.btn { color: #fff; font-size: inherit; }
+
+/* Colaboradores e acessos (Área do RH e Administração) */
+.ind-cab > .btn { margin-left: auto; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--destaque); font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.tabela tr.inativo-suave td:not(.acoes-colab) { opacity: .62; }
+.acoes-colab { width: 150px; min-width: 150px; }
+.modal-colab { max-width: 820px; }
+.modal-colab header > div { flex: 1; }
+#tabela-colab td { vertical-align: top; }
+#tabela-colab .acoes-colab .btn { display: block; width: 100%; margin: 0 0 .3rem; white-space: nowrap; }
+#tabela-deps .acoes-colab { width: auto; white-space: nowrap; }
+#tabela-deps .acoes-colab .btn + .btn { margin-left: .35rem; }
+.grade-colab { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem 1rem; }
+.grade-colab .largo { grid-column: 1 / -1; }
+.grade-dep { grid-template-columns: 2fr 1.3fr 1fr 1fr; align-items: end; margin-top: .9rem; padding-top: .9rem; border-top: 1px dashed var(--linha); }
+.grade-dep .largo-2 { grid-column: span 1; }
+.grade-dep .acoes-form { grid-column: 1 / -1; }
+.acoes-form { display: flex; justify-content: flex-end; gap: .5rem; }
+.titulo-bloco { font-family: var(--fonte-titulo); color: var(--marinho); font-size: .95rem; margin: 0 0 .6rem; padding-top: 1rem; border-top: 1px solid var(--linha); }
+@media (max-width: 700px) {
+  .grade-colab, .grade-dep { grid-template-columns: 1fr; }
+}

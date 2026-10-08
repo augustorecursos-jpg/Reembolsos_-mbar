@@ -4,9 +4,23 @@ const adm = { usuario: null, filtros: null, solicitacoes: [], folha: null };
 const area = iniciarArea({
   exigeAdmin: false,
   abaPadrao: 'painel',
-  abas: { painel: carregarPainel, solicitacoes: carregarSolicitacoes, folha: carregarFolha },
-  aoEntrar: async (usuario) => { adm.usuario = usuario; await carregarFiltros(); },
+  abas: { painel: carregarPainel, solicitacoes: carregarSolicitacoes, folha: carregarFolha, colaboradores: Colaboradores.carregar },
+  aoEntrar: async (usuario) => { adm.usuario = usuario; await carregarFiltros(); aplicarBuscaPendente(); },
 });
+
+/** Histórico completo de um colaborador: todas as solicitações dele, de qualquer status e competência. */
+function verHistorico(cpf) {
+  for (const id of ['f-comp', 'f-status', 'f-beneficio', 'f-unidade', 'f-de', 'f-ate']) document.getElementById(id).value = '';
+  document.getElementById('f-busca').value = cpf;
+  area.trocarAba('solicitacoes');
+}
+// Vindo da Administração (“ver” solicitações de um colaborador).
+function aplicarBuscaPendente() {
+  let cpf = null;
+  try { cpf = sessionStorage.getItem('rh-historico-cpf'); sessionStorage.removeItem('rh-historico-cpf'); } catch { /* sem storage */ }
+  if (cpf) { verHistorico(cpf); }
+}
+Colaboradores.montar(document.getElementById('area-colaboradores'), { aoVerHistorico: verHistorico });
 const trocarAba = (aba) => area.trocarAba(aba);
 
 async function carregarFiltros() {

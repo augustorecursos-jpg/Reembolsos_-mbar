@@ -136,6 +136,13 @@ if (adicionarColuna('usuarios_rh', 'perfil', "TEXT NOT NULL DEFAULT 'rh'")) {
 adicionarColuna('usuarios_rh', 'ultimo_acesso', 'TEXT');
 // Comentários internos do RH não aparecem para o colaborador.
 adicionarColuna('eventos', 'interno', 'INTEGER NOT NULL DEFAULT 0');
+// Controle de acesso do colaborador pelo RH (nunca apaga o cadastro: o histórico de solicitações é mantido).
+// ativo = está na base; bloqueado = bloqueio manual (vale mesmo após novas cargas da base);
+// excluido_em = acesso excluído pelo RH (some da lista padrão; volta se o CPF vier numa nova carga ou for restaurado).
+adicionarColuna('colaboradores', 'bloqueado', 'INTEGER NOT NULL DEFAULT 0');
+adicionarColuna('colaboradores', 'motivo_bloqueio', 'TEXT');
+adicionarColuna('colaboradores', 'excluido_em', 'TEXT');
+adicionarColuna('colaboradores', 'origem', "TEXT NOT NULL DEFAULT 'base'"); // base | manual
 
 // Registro das ações de quem usa a Área do RH e a Administração.
 db.exec(`

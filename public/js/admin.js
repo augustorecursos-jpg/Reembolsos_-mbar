@@ -5,7 +5,7 @@ const adm = { usuario: null, colaboradores: [], auditoria: [], linhas: { colab: 
 const area = iniciarArea({
   exigeAdmin: true,
   abaPadrao: 'visao',
-  abas: { visao: carregarVisao, base: carregarBase, colaboradores: carregarColaboradores, usuarios: carregarUsuarios, regras: carregarRegras, portal: carregarPortal, auditoria: carregarAuditoria, exclusao: carregarExclusao },
+  abas: { visao: carregarVisao, base: carregarBase, colaboradores: Colaboradores.carregar, usuarios: carregarUsuarios, regras: carregarRegras, portal: carregarPortal, auditoria: carregarAuditoria, exclusao: carregarExclusao },
   aoEntrar: async (usuario) => { adm.usuario = usuario; },
 });
 document.addEventListener('click', (e) => {
@@ -131,48 +131,12 @@ async function carregarBase() {
 }
 
 // ---------- Colaboradores e bloqueio de acesso ----------
-async function carregarColaboradores() {
-  adm.colaboradores = await api('/api/admin/colaboradores');
-  renderColaboradores();
-}
-
-function renderColaboradores() {
-  const termo = semAcento(document.getElementById('busca-colab').value);
-  const situacao = document.getElementById('filtro-acesso').value;
-  const digitos = termo.replace(/[.\-/\s]/g, '');
-  const lista = adm.colaboradores.filter(c => (situacao === '' || String(c.ativo) === situacao) && (!termo
-    || semAcento([c.nome, c.matricula, c.unidade, c.email].join(' ')).includes(termo)
-    || (digitos && /^\d+$/.test(digitos) && c.cpf.includes(digitos))));
-  const ativos = adm.colaboradores.filter(c => c.ativo).length;
-  document.getElementById('qtd-colab').textContent = `· ${fmt(ativos)} com acesso · ${fmt(adm.colaboradores.length - ativos)} bloqueado(s)`;
-  document.getElementById('tabela-colab').innerHTML = `
-    <tr><th>CPF</th><th>Matrícula</th><th>Nome</th><th>Unidade</th><th>Perfil</th><th>Dependentes</th><th>Elegibilidade</th><th>Último acesso</th><th>Acesso</th></tr>
-    ${lista.slice(0, 500).map(c => `
-      <tr class="${c.ativo ? '' : 'inativo'}">
-        <td>${formatarCpf(c.cpf)}</td><td>${esc(c.matricula)}</td>
-        <td>${esc(c.nome)}${c.data_desligamento ? `<br><small class="q-dica">Desligamento: ${dataBR(c.data_desligamento)}</small>` : ''}</td>
-        <td>${esc(c.unidade || '–')}</td>
-        <td>${c.sucedido ? 'Sucedido' : 'Não sucedido'}<br><small class="q-dica">Admissão ${dataBR(c.data_admissao)}</small></td>
-        <td title="${esc(c.dependentes.map(d => `${d.nome} (${d.parentesco})`).join('\n'))}">${fmt(c.dependentes.length)}</td>
-        <td>${Object.entries(c.beneficios).filter(([, n]) => n.length).map(([k, n]) => `<span class="etiqueta neutra" title="${esc(n.join('\n'))}">${ICONES[k]} ${n.length}</span>`).join(' ') || '<span class="q-dica">nenhum</span>'}</td>
-        <td>${c.ultimo_acesso ? dataHoraBR(c.ultimo_acesso) : '<span class="q-dica">nunca</span>'}</td>
-        <td>${c.ativo ? '<span class="etiqueta ok">Liberado</span>' : '<span class="etiqueta nao">Bloqueado</span>'}<br>
-          <button class="btn btn-sm ${c.ativo ? 'btn-perigo' : 'btn-laranja'}" style="margin-top:.3rem" data-acesso="${c.cpf}" data-nome="${esc(c.nome)}" data-ativo="${c.ativo ? 0 : 1}">${c.ativo ? 'Bloquear' : 'Liberar'}</button></td>
-      </tr>`).join('') || '<tr><td colspan="9">Nenhum colaborador encontrado.</td></tr>'}
-    ${lista.length > 500 ? '<tr><td colspan="9" class="q-dica">Mostrando os 500 primeiros. Use a busca para encontrar outros.</td></tr>' : ''}`;
-}
-document.getElementById('busca-colab').addEventListener('input', renderColaboradores);
-document.getElementById('filtro-acesso').addEventListener('change', renderColaboradores);
-document.getElementById('tabela-colab').addEventListener('click', async (e) => {
-  const b = e.target.closest('[data-acesso]');
-  if (!b) return;
-  const liberar = b.dataset.ativo === '1';
-  if (!liberar && !confirm(`Bloquear o acesso de ${b.dataset.nome}? A pessoa é desconectada na hora e não consegue entrar até ser liberada.`)) return;
-  try {
-    await api(`/api/admin/colaboradores/${b.dataset.acesso}`, { method: 'PATCH', body: { ativo: liberar } });
-    toast(liberar ? 'Acesso liberado.' : 'Acesso bloqueado.');
-    carregarColaboradores();
-  } catch (err) { toast(err.message, 'erro'); }
+// Mesma tela da Área do RH; “ver” abre o histórico do colaborador na análise de solicitações.
+Colaboradores.montar(document.getElementById('area-colaboradores'), {
+  aoVerHistorico: (cpf) => {
+    try { sessionStorage.setItem('rh-historico-cpf', cpf); } catch { /* sem storage */ }
+    location.href = 'rh.html#solicitacoes';
+  },
 });
 
 // ---------- Usuários e perfis ----------

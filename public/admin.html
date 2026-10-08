@@ -139,29 +139,14 @@
       </section>
 
       <!-- Colaboradores e bloqueio de acesso -->
-      <section data-painel="colaboradores" hidden>
-        <h1 class="titulo-pagina">Colaboradores e <em>acessos</em></h1>
-        <div class="cartao">
-          <div class="cab-tabela">
-            <h3>👥 Colaboradores <small id="qtd-colab"></small></h3>
-            <div class="filtros">
-              <select class="campo" id="filtro-acesso" aria-label="Situação do acesso">
-                <option value="">Todos</option><option value="1">Com acesso</option><option value="0">Bloqueados</option>
-              </select>
-              <input class="campo" id="busca-colab" placeholder="Nome, CPF, matrícula, unidade…" aria-label="Buscar">
-            </div>
-          </div>
-          <p class="q-dica" style="margin-top:0">O bloqueio vale na hora: o colaborador é desconectado e não consegue entrar até ser liberado (o histórico é mantido). Uma nova carga no modo “Substituir base” também libera quem estiver na planilha.</p>
-          <div class="tabela-wrap"><table class="tabela" id="tabela-colab"></table></div>
-        </div>
-      </section>
+      <section data-painel="colaboradores" id="area-colaboradores" hidden></section>
 
       <!-- Usuários do RH e perfis -->
       <section data-painel="usuarios" hidden>
         <h1 class="titulo-pagina">Usuários e <em>perfis</em></h1>
         <div class="ind-grade perfis-grade">
-          <div class="cartao perfil-card"><h3>🧾 RH (análise)</h3><p>Entra na <strong>Área do RH</strong>: painel, análise das solicitações (aprovar, reprovar, reabrir e comentar) e arquivo da folha.</p></div>
-          <div class="cartao perfil-card"><h3>🛡️ Administrador</h3><p>Tudo o que o RH faz, mais a <strong>Administração</strong>: base de elegibilidade, bloqueio de acessos, usuários, período, limites, suspensão do portal, auditoria e backup.</p></div>
+          <div class="cartao perfil-card"><h3>🧾 RH (análise)</h3><p>Entra na <strong>Área do RH</strong>: painel, análise das solicitações (aprovar, reprovar, reabrir e comentar), arquivo da folha e cadastro de colaboradores (incluir, editar, bloquear e excluir acessos, sem apagar o histórico).</p></div>
+          <div class="cartao perfil-card"><h3>🛡️ Administrador</h3><p>Tudo o que o RH faz, mais a <strong>Administração</strong>: importação da base de elegibilidade, usuários, período, limites, suspensão do portal, auditoria e backup.</p></div>
         </div>
         <div class="cartao" style="margin-top:1.4rem">
           <h3>🔐 Usuários</h3>
@@ -310,6 +295,7 @@
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="js/comum.js"></script>
   <script src="js/gestao-comum.js"></script>
+  <script src="js/colaboradores.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

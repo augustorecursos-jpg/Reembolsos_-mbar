@@ -72,7 +72,7 @@ function definirSessao(res, nome, payload, horas) {
 }
 
 function lerColaborador(cpf) {
-  const c = db.prepare('SELECT * FROM colaboradores WHERE cpf = ? AND ativo = 1').get(cpf);
+  const c = db.prepare('SELECT * FROM colaboradores WHERE cpf = ? AND ativo = 1 AND bloqueado = 0').get(cpf);
   if (c) c.elegibilidade = JSON.parse(c.elegibilidade || '{}');
   return c;
 }
@@ -293,7 +293,8 @@ app.post('/api/entrar', (req, res) => {
   const colab = cpf && lerColaborador(cpf);
   if (!colab) {
     limiteColab.registrar(req);
-    return res.status(403).json({ erro: 'Acesso negado. CPF não encontrado na base de elegibilidade. Procure o time de RH.' });
+    const bloqueado = cpf && db.prepare('SELECT 1 FROM colaboradores WHERE cpf = ? AND bloqueado = 1 AND excluido_em IS NULL').get(cpf);
+    return res.status(403).json({ erro: bloqueado ? 'Seu acesso ao portal está bloqueado. Procure o time de RH.' : 'Acesso negado. CPF não encontrado na base de elegibilidade. Procure o time de RH.' });
   }
   db.prepare("UPDATE colaboradores SET acessos = acessos + 1, ultimo_acesso = datetime('now') WHERE cpf = ?").run(cpf);
   definirSessao(res, 'sess_colab', { cpf }, 8);
@@ -661,7 +662,17 @@ app.post('/api/admin/solicitacoes/:id/comentar', exigirRh, (req, res) => {
 
 // -- Base de elegibilidade --
 
-app.get('/api/admin/colaboradores', exigirAdmin, (_req, res) => {
+// -- Colaboradores e acessos (Área do RH e Administração) --
+// Nada aqui apaga o cadastro: bloquear e excluir só tiram o acesso. As solicitações guardam uma cópia dos dados
+// cadastrais e continuam no histórico, na folha e nos relatórios.
+
+function situacaoColaborador(c) {
+  if (c.excluido_em) return 'excluido';
+  if (c.bloqueado) return 'bloqueado';
+  return c.ativo ? 'liberado' : 'fora_base';
+}
+
+app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
   const config = configuracao();
   const hoje = R.hojeISO();
   const deps = db.prepare('SELECT * FROM dependentes WHERE ativo = 1 ORDER BY nome').all();
@@ -671,6 +682,7 @@ app.get('/api/admin/colaboradores', exigirAdmin, (_req, res) => {
     if (!porTitular.has(d.cpf_titular)) porTitular.set(d.cpf_titular, []);
     porTitular.get(d.cpf_titular).push(d);
   }
+  const qtdSol = new Map(db.prepare('SELECT cpf, COUNT(*) AS n FROM solicitacoes GROUP BY cpf').all().map(r => [r.cpf, r.n]));
   const lista = db.prepare('SELECT * FROM colaboradores ORDER BY nome').all().map(c => {
     c.elegibilidade = JSON.parse(c.elegibilidade || '{}');
     const ds = porTitular.get(c.cpf) || [];
@@ -683,21 +695,133 @@ app.get('/api/admin/colaboradores', exigirAdmin, (_req, res) => {
     }));
     return {
       cpf: c.cpf, matricula: c.matricula, nome: c.nome, email: c.email, unidade: c.unidade,
-      data_admissao: c.data_admissao, sucedido: R.ehSucedido(c), data_desligamento: c.data_desligamento, ativo: c.ativo,
-      ultimo_acesso: c.ultimo_acesso,
-      dependentes: ds.map(d => ({ nome: d.nome, parentesco: R.PARENTESCOS[d.parentesco] || d.parentesco, data_nascimento: d.data_nascimento })),
+      data_admissao: c.data_admissao, sucedido: R.ehSucedido(c), sucedido_base: c.sucedido, data_desligamento: c.data_desligamento,
+      ativo: c.ativo, bloqueado: c.bloqueado, motivo_bloqueio: c.motivo_bloqueio, excluido_em: c.excluido_em, origem: c.origem,
+      situacao: situacaoColaborador(c), ultimo_acesso: c.ultimo_acesso, solicitacoes: qtdSol.get(c.cpf) || 0,
+      dependentes: ds.map(d => ({ id: d.id, nome: d.nome, cpf: d.cpf, parentesco: d.parentesco, rotulo: R.PARENTESCOS[d.parentesco] || d.parentesco, data_nascimento: d.data_nascimento })),
       beneficios,
     };
   });
   res.json(lista);
 });
 
-app.patch('/api/admin/colaboradores/:cpf', exigirAdmin, (req, res) => {
+/** Valida os dados cadastrais vindos do formulário do RH. */
+function lerCadastroColaborador(b) {
+  const nome = String(b.nome || '').trim().slice(0, 150);
+  const matricula = String(b.matricula || '').trim().slice(0, 30);
+  if (!nome) return { erro: 'Informe o nome.' };
+  if (!matricula) return { erro: 'Informe a matrícula.' };
+  const email = String(b.email || '').trim().toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { erro: 'E-mail inválido.' };
+  const dataAdm = b.data_admissao ? R.normalizarData(b.data_admissao) : null;
+  if (b.data_admissao && !dataAdm) return { erro: 'Data de admissão inválida.' };
+  const dataDesl = b.data_desligamento ? R.normalizarData(b.data_desligamento) : null;
+  if (b.data_desligamento && !dataDesl) return { erro: 'Data de desligamento inválida.' };
+  const suc = R.lerMarcador(b.sucedido);
+  return {
+    dados: {
+      nome, matricula, email, unidade: String(b.unidade || '').trim().slice(0, 80),
+      data_admissao: dataAdm, data_desligamento: dataDesl, sucedido: suc === 'S' ? 1 : suc === 'N' ? 0 : null,
+    },
+  };
+}
+
+function lerDependente(b) {
+  const nome = String(b.nome || '').trim().slice(0, 150);
+  if (!nome) return { erro: 'Informe o nome do dependente.' };
+  const parentesco = R.normalizarParentesco(b.parentesco);
+  if (!parentesco) return { erro: 'Informe um parentesco válido.' };
+  const nascimento = b.data_nascimento ? R.normalizarData(b.data_nascimento) : null;
+  if (b.data_nascimento && !nascimento) return { erro: 'Data de nascimento inválida.' };
+  let cpf = null;
+  if (String(b.cpf || '').trim()) {
+    cpf = normalizarCpf(b.cpf);
+    if (!cpf) return { erro: 'CPF do dependente inválido.' };
+  }
+  // Mesma chave da importação da base, para a próxima carga reconhecer o dependente.
+  const chave = cpf || `${nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ')}|${nascimento || ''}`;
+  return { dados: { nome, parentesco, data_nascimento: nascimento, cpf, chave } };
+}
+
+const colaboradorPorCpf = (cpf) => cpf && db.prepare('SELECT * FROM colaboradores WHERE cpf = ?').get(cpf);
+
+app.post('/api/admin/colaboradores', exigirRh, (req, res) => {
+  const cpf = normalizarCpf(req.body?.cpf);
+  if (!cpf) return res.status(400).json({ erro: 'CPF inválido.' });
+  const existente = colaboradorPorCpf(cpf);
+  if (existente) {
+    const sit = situacaoColaborador(existente);
+    return res.status(409).json({ erro: sit === 'liberado' ? `Este CPF já está cadastrado (${existente.nome}).` : `Este CPF já está cadastrado (${existente.nome}) e está ${sit === 'excluido' ? 'com o acesso excluído' : sit === 'bloqueado' ? 'bloqueado' : 'fora da base'}. Use “Restaurar” ou “Liberar” na lista.` });
+  }
+  const { erro, dados: d } = lerCadastroColaborador(req.body || {});
+  if (erro) return res.status(400).json({ erro });
+  db.prepare(`INSERT INTO colaboradores (cpf, matricula, nome, email, unidade, data_admissao, sucedido, data_desligamento, elegibilidade, ativo, origem)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', 1, 'manual')`).run(cpf, d.matricula, d.nome, d.email, d.unidade, d.data_admissao, d.sucedido, d.data_desligamento);
+  auditar(req, 'Incluiu colaborador', `${d.nome} · CPF ${cpf}`);
+  res.status(201).json({ ok: true });
+});
+
+app.put('/api/admin/colaboradores/:cpf', exigirRh, (req, res) => {
   const cpf = normalizarCpf(req.params.cpf);
-  const c = cpf && db.prepare('SELECT nome FROM colaboradores WHERE cpf = ?').get(cpf);
+  const c = colaboradorPorCpf(cpf);
   if (!c) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
-  db.prepare("UPDATE colaboradores SET ativo = ?, atualizado_em = datetime('now') WHERE cpf = ?").run(req.body?.ativo ? 1 : 0, cpf);
-  auditar(req, req.body?.ativo ? 'Liberou acesso de colaborador' : 'Bloqueou acesso de colaborador', `${c.nome} · CPF ${cpf}`);
+  const { erro, dados: d } = lerCadastroColaborador(req.body || {});
+  if (erro) return res.status(400).json({ erro });
+  db.prepare(`UPDATE colaboradores SET matricula = ?, nome = ?, email = ?, unidade = ?, data_admissao = ?, sucedido = ?, data_desligamento = ?,
+    atualizado_em = datetime('now') WHERE cpf = ?`).run(d.matricula, d.nome, d.email, d.unidade, d.data_admissao, d.sucedido, d.data_desligamento, cpf);
+  auditar(req, 'Editou cadastro de colaborador', `${d.nome} · CPF ${cpf}`);
+  res.json({ ok: true });
+});
+
+// Bloquear, liberar, excluir acesso e restaurar. Nenhuma dessas ações remove solicitações.
+const ACOES_ACESSO = {
+  bloquear: { sql: "UPDATE colaboradores SET bloqueado = 1, motivo_bloqueio = ?, atualizado_em = datetime('now') WHERE cpf = ?", motivo: true, log: 'Bloqueou acesso de colaborador' },
+  liberar: { sql: "UPDATE colaboradores SET bloqueado = 0, motivo_bloqueio = NULL, ativo = 1, excluido_em = NULL, atualizado_em = datetime('now') WHERE cpf = ?", log: 'Liberou acesso de colaborador' },
+  excluir: { sql: "UPDATE colaboradores SET ativo = 0, excluido_em = datetime('now'), motivo_bloqueio = ?, atualizado_em = datetime('now') WHERE cpf = ?", motivo: true, log: 'Excluiu acesso de colaborador (histórico mantido)' },
+  restaurar: { sql: "UPDATE colaboradores SET ativo = 1, excluido_em = NULL, bloqueado = 0, motivo_bloqueio = NULL, atualizado_em = datetime('now') WHERE cpf = ?", log: 'Restaurou acesso de colaborador' },
+};
+app.post('/api/admin/colaboradores/:cpf/:acao', exigirRh, (req, res, next) => {
+  const a = Object.hasOwn(ACOES_ACESSO, req.params.acao) && ACOES_ACESSO[req.params.acao];
+  if (!a) return next(); // outras rotas (ex.: /dependentes)
+  const cpf = normalizarCpf(req.params.cpf);
+  const c = colaboradorPorCpf(cpf);
+  if (!c) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
+  const motivo = String(req.body?.motivo || '').trim().slice(0, 300);
+  if (a.motivo) db.prepare(a.sql).run(motivo || null, cpf); else db.prepare(a.sql).run(cpf);
+  auditar(req, a.log, `${c.nome} · CPF ${cpf}${motivo ? ` · ${motivo}` : ''}`);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/colaboradores/:cpf/dependentes', exigirRh, (req, res) => {
+  const cpf = normalizarCpf(req.params.cpf);
+  const c = colaboradorPorCpf(cpf);
+  if (!c) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
+  const { erro, dados: d } = lerDependente(req.body || {});
+  if (erro) return res.status(400).json({ erro });
+  db.prepare(`INSERT INTO dependentes (cpf_titular, chave, nome, cpf, parentesco, data_nascimento, elegibilidade, ativo) VALUES (?, ?, ?, ?, ?, ?, '{}', 1)
+    ON CONFLICT(cpf_titular, chave) DO UPDATE SET nome = excluded.nome, cpf = excluded.cpf, parentesco = excluded.parentesco,
+      data_nascimento = excluded.data_nascimento, ativo = 1, atualizado_em = datetime('now')`).run(cpf, d.chave, d.nome, d.cpf, d.parentesco, d.data_nascimento);
+  auditar(req, 'Incluiu dependente', `${d.nome} (${R.PARENTESCOS[d.parentesco]}) · titular ${c.nome}`);
+  res.status(201).json({ ok: true });
+});
+
+app.put('/api/admin/dependentes/:id', exigirRh, (req, res) => {
+  const dep = db.prepare('SELECT * FROM dependentes WHERE id = ?').get(Number(req.params.id));
+  if (!dep) return res.status(404).json({ erro: 'Dependente não encontrado.' });
+  const { erro, dados: d } = lerDependente(req.body || {});
+  if (erro) return res.status(400).json({ erro });
+  // A chave fica a mesma: as solicitações e o saldo continuam ligados a este dependente.
+  db.prepare("UPDATE dependentes SET nome = ?, cpf = ?, parentesco = ?, data_nascimento = ?, atualizado_em = datetime('now') WHERE id = ?")
+    .run(d.nome, d.cpf, d.parentesco, d.data_nascimento, dep.id);
+  auditar(req, 'Editou dependente', `${d.nome} · titular CPF ${dep.cpf_titular}`);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/dependentes/:id/remover', exigirRh, (req, res) => {
+  const dep = db.prepare('SELECT * FROM dependentes WHERE id = ?').get(Number(req.params.id));
+  if (!dep) return res.status(404).json({ erro: 'Dependente não encontrado.' });
+  db.prepare("UPDATE dependentes SET ativo = 0, atualizado_em = datetime('now') WHERE id = ?").run(dep.id);
+  auditar(req, 'Removeu dependente (histórico mantido)', `${dep.nome} · titular CPF ${dep.cpf_titular}`);
   res.json({ ok: true });
 });
 
@@ -730,7 +854,7 @@ app.post('/api/admin/base/colaboradores', exigirAdmin, (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     ON CONFLICT(cpf) DO UPDATE SET matricula = excluded.matricula, nome = excluded.nome, email = excluded.email,
       unidade = excluded.unidade, data_admissao = excluded.data_admissao, sucedido = excluded.sucedido,
-      data_desligamento = excluded.data_desligamento, elegibilidade = excluded.elegibilidade, ativo = 1, atualizado_em = datetime('now')`);
+      data_desligamento = excluded.data_desligamento, elegibilidade = excluded.elegibilidade, ativo = 1, excluido_em = NULL, atualizado_em = datetime('now')`);
   db.exec('BEGIN');
   try {
     if (substituir) db.exec("UPDATE colaboradores SET ativo = 0, atualizado_em = datetime('now')");
@@ -943,7 +1067,7 @@ app.get('/api/admin/visao-geral', exigirAdmin, (_req, res) => {
   res.json({
     periodo: R.situacaoPeriodo(config, hoje),
     suspenso: config.portal_suspenso, mensagem_suspensao: config.mensagem_suspensao,
-    colaboradores: um('SELECT SUM(ativo = 1) AS ativos, SUM(ativo = 0) AS bloqueados, COUNT(*) AS total, SUM(ultimo_acesso IS NOT NULL) AS acessaram FROM colaboradores'),
+    colaboradores: um('SELECT SUM(ativo = 1 AND bloqueado = 0) AS ativos, SUM(bloqueado = 1 OR (ativo = 0 AND excluido_em IS NULL)) AS bloqueados, SUM(excluido_em IS NOT NULL) AS excluidos, COUNT(*) AS total, SUM(ultimo_acesso IS NOT NULL) AS acessaram FROM colaboradores'),
     dependentes: um('SELECT COUNT(*) AS n FROM dependentes d JOIN colaboradores c ON c.cpf = d.cpf_titular WHERE d.ativo = 1 AND c.ativo = 1').n,
     usuarios: um("SELECT SUM(ativo = 1 AND perfil = 'rh') AS rh, SUM(ativo = 1 AND perfil = 'admin') AS admin, SUM(ativo = 0) AS bloqueados FROM usuarios_rh"),
     solicitacoes: um("SELECT COUNT(*) AS total, SUM(status = 'analise') AS analise, SUM(status = 'aprovado') AS aprovadas, SUM(status = 'reprovado') AS reprovadas FROM solicitacoes"),

@@ -47,6 +47,8 @@
     <button class="lateral-item ativo" data-aba="painel"><span class="ic">📈</span>Painel</button>
     <button class="lateral-item" data-aba="solicitacoes"><span class="ic">🧾</span>Solicitações<span class="qtd" id="qtd-pendentes" hidden></span></button>
     <button class="lateral-item" data-aba="folha"><span class="ic">💰</span>Folha de pagamento</button>
+    <p class="lateral-grupo">CADASTRO</p>
+    <button class="lateral-item" data-aba="colaboradores"><span class="ic">👥</span>Colaboradores</button>
     <div data-so-admin hidden>
       <p class="lateral-grupo">ADMINISTRAÇÃO</p>
       <a class="lateral-item" href="admin.html"><span class="ic">🛡️</span>Ir para a Administração</a>
@@ -120,6 +122,9 @@
         </div>
       </section>
 
+      <!-- Colaboradores e acessos (montado por js/colaboradores.js) -->
+      <section data-painel="colaboradores" id="area-colaboradores" hidden></section>
+
       <!-- Folha -->
       <section data-painel="folha" hidden>
         <div class="ind-cab">
@@ -170,6 +175,7 @@
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="js/comum.js"></script>
   <script src="js/gestao-comum.js"></script>
+  <script src="js/colaboradores.js"></script>
   <script src="js/rh.js"></script>
 </body>
 </html>
