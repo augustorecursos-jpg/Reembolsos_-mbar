@@ -12,6 +12,8 @@ const OPCOES_PARENTESCO = [['conjuge', 'Cônjuge/Companheiro(a)'], ['filho', 'Fi
 const Colaboradores = (() => {
   let lista = [];
   let editando = null; // CPF do colaborador aberto no formulário
+  let pendentes = []; // dependentes de um colaborador novo, salvos junto com ele
+  let seq = 0;
   let opcoes = {};
   let unidades = []; // lista oficial de filiais (regras.js)
   const $ = (id) => document.getElementById(id);
@@ -55,9 +57,9 @@ const Colaboradores = (() => {
             <label class="rotulo">Sucedido<select class="campo" name="sucedido">
               <option value="">Pela data de admissão (até 2011)</option><option value="S">Sim</option><option value="N">Não</option></select></label>
             <label class="rotulo">Data de desligamento <small>(opcional)</small><input class="campo" type="date" name="data_desligamento"></label>
-            <div class="largo acoes-form"><button class="btn btn-laranja" type="submit" id="colab-salvar">Salvar cadastro</button></div>
+            <div class="largo acoes-form" id="colab-acoes-editar"><button class="btn btn-laranja" type="submit" id="colab-salvar">Salvar alterações</button></div>
           </form>
-          <section id="colab-deps" hidden>
+          <section id="colab-deps">
             <h4 class="titulo-bloco">👨‍👩‍👧 Dependentes</h4>
             <div class="tabela-wrap"><table class="tabela" id="tabela-deps"></table></div>
             <form id="form-dep" class="grade-colab grade-dep">
@@ -70,9 +72,11 @@ const Colaboradores = (() => {
               <div class="acoes-form"><button class="btn btn-claro" type="button" id="dep-cancelar" hidden>Cancelar</button>
                 <button class="btn btn-laranja" type="submit" id="dep-salvar">＋ Incluir dependente</button></div>
             </form>
-            <p class="q-dica">Remover um dependente tira ele dos benefícios a partir de agora; as solicitações já feitas para ele continuam no histórico.</p>
+            <p class="q-dica" id="deps-dica"></p>
           </section>
         </div>
+        <footer id="colab-rodape-novo"><span class="q-dica">Os dependentes da lista são salvos junto com o colaborador.</span>
+          <button class="btn btn-laranja" type="submit" form="form-colab">Incluir colaborador</button></footer>
       </dialog>
       <dialog class="modal qr-modal" id="modal-acesso">
         <form id="form-acesso">
@@ -205,20 +209,26 @@ const Colaboradores = (() => {
       for (const k of ['matricula', 'nome', 'email', 'data_admissao', 'data_desligamento']) f[k].value = c[k] || '';
       f.sucedido.value = c.sucedido_base === 1 ? 'S' : c.sucedido_base === 0 ? 'N' : '';
     }
-    $('colab-salvar').textContent = c ? 'Salvar alterações' : 'Incluir colaborador';
+    $('colab-acoes-editar').hidden = !c;
+    $('colab-rodape-novo').hidden = Boolean(c);
+    if (!c) pendentes = [];
     renderDependentes();
     if (!$('modal-colab').open) $('modal-colab').showModal();
     (c ? f.matricula : f.cpf).focus();
   }
 
+  const rotuloParentesco = (v) => (OPCOES_PARENTESCO.find(([k]) => k === v) || [, v])[1];
+  /** Dependentes exibidos: os já cadastrados (edição) ou a lista provisória (colaborador novo). */
+  const dependentesAtuais = () => (editando ? porCpf(editando).dependentes : pendentes);
+
   function renderDependentes() {
-    const c = editando && porCpf(editando);
-    $('colab-deps').hidden = !c;
     limparDependente();
-    if (!c) return;
+    $('deps-dica').textContent = editando
+      ? 'Remover um dependente tira ele dos benefícios a partir de agora; as solicitações já feitas para ele continuam no histórico.'
+      : 'Inclua os dependentes agora (opcional). Eles só são gravados quando você clicar em “Incluir colaborador”.';
     $('tabela-deps').innerHTML = `
       <tr><th>Nome</th><th>Parentesco</th><th>Nascimento</th><th>CPF</th><th></th></tr>
-      ${c.dependentes.map(d => `<tr><td>${esc(d.nome)}</td><td>${esc(d.rotulo)}</td><td>${d.data_nascimento ? dataBR(d.data_nascimento) : '–'}</td><td>${d.cpf ? formatarCpf(d.cpf) : '–'}</td>
+      ${dependentesAtuais().map(d => `<tr><td>${esc(d.nome)}</td><td>${esc(d.rotulo)}</td><td>${d.data_nascimento ? dataBR(d.data_nascimento) : '–'}</td><td>${d.cpf ? formatarCpf(d.cpf) : '–'}</td>
         <td class="acoes-colab"><button class="btn btn-claro btn-sm" data-dep-editar="${d.id}">Editar</button><button class="btn btn-perigo btn-sm" data-dep-remover="${d.id}">Remover</button></td></tr>`).join('')
         || '<tr><td colspan="5" class="q-dica">Nenhum dependente cadastrado.</td></tr>'}`;
   }
@@ -232,10 +242,10 @@ const Colaboradores = (() => {
   }
 
   async function aoClicarDependente(e) {
-    const c = porCpf(editando);
+    const c = editando && porCpf(editando);
     const ed = e.target.closest('[data-dep-editar]');
     if (ed) {
-      const d = c.dependentes.find(x => String(x.id) === ed.dataset.depEditar);
+      const d = dependentesAtuais().find(x => String(x.id) === ed.dataset.depEditar);
       const f = $('form-dep');
       f.id.value = d.id;
       f.nome.value = d.nome;
@@ -249,6 +259,11 @@ const Colaboradores = (() => {
     }
     const rm = e.target.closest('[data-dep-remover]');
     if (!rm) return;
+    if (!c) { // colaborador novo: só tira da lista provisória
+      pendentes = pendentes.filter(x => String(x.id) !== rm.dataset.depRemover);
+      renderDependentes();
+      return;
+    }
     const d = c.dependentes.find(x => String(x.id) === rm.dataset.depRemover);
     if (!confirm(`Remover ${d.nome} dos dependentes de ${c.nome}? As solicitações já feitas para ${d.nome.split(' ')[0]} continuam no histórico.`)) return;
     try {
@@ -270,8 +285,10 @@ const Colaboradores = (() => {
         await carregar();
         abrir(editando);
       } else {
+        corpo.dependentes = pendentes.map(({ nome, parentesco, data_nascimento, cpf }) => ({ nome, parentesco, data_nascimento, cpf }));
         await api('/api/admin/colaboradores', { method: 'POST', body: corpo });
-        toast('Colaborador incluído. Agora você pode cadastrar os dependentes.');
+        toast(pendentes.length ? `Colaborador incluído com ${pendentes.length} dependente(s).` : 'Colaborador incluído.');
+        pendentes = [];
         await carregar();
         abrir(corpo.cpf.replace(/\D/g, ''));
       }
@@ -281,7 +298,16 @@ const Colaboradores = (() => {
   async function salvarDependente(e) {
     e.preventDefault();
     const f = e.target;
-    const corpo = { nome: f.nome.value, parentesco: f.parentesco.value, data_nascimento: f.data_nascimento.value, cpf: f.cpf.value };
+    const corpo = { nome: f.nome.value.trim(), parentesco: f.parentesco.value, data_nascimento: f.data_nascimento.value, cpf: f.cpf.value.replace(/\D/g, '') };
+    if (!editando) { // colaborador novo: guarda na lista provisória
+      if (corpo.cpf && corpo.cpf.length !== 11) return toast('CPF do dependente inválido.', 'erro');
+      const item = { ...corpo, rotulo: rotuloParentesco(corpo.parentesco) };
+      if (f.id.value) pendentes = pendentes.map(x => (String(x.id) === f.id.value ? { ...item, id: x.id } : x));
+      else pendentes.push({ ...item, id: `n${++seq}` });
+      renderDependentes();
+      f.nome.focus();
+      return;
+    }
     try {
       if (f.id.value) await api(`/api/admin/dependentes/${f.id.value}`, { method: 'PUT', body: corpo });
       else await api(`/api/admin/colaboradores/${editando}/dependentes`, { method: 'POST', body: corpo });

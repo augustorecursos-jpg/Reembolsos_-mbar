@@ -760,9 +760,27 @@ app.post('/api/admin/colaboradores', exigirRh, (req, res) => {
   }
   const { erro, dados: d } = lerCadastroColaborador(req.body || {});
   if (erro) return res.status(400).json({ erro });
-  db.prepare(`INSERT INTO colaboradores (cpf, matricula, nome, email, unidade, data_admissao, sucedido, data_desligamento, elegibilidade, ativo, origem)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', 1, 'manual')`).run(cpf, d.matricula, d.nome, d.email, d.unidade, d.data_admissao, d.sucedido, d.data_desligamento);
-  auditar(req, 'Incluiu colaborador', `${d.nome} · CPF ${cpf}`);
+  // Dependentes informados junto com o cadastro: valida todos antes de gravar qualquer coisa.
+  const entrada = Array.isArray(req.body?.dependentes) ? req.body.dependentes.slice(0, 30) : [];
+  const deps = [];
+  for (const [i, x] of entrada.entries()) {
+    const r = lerDependente(x || {});
+    if (r.erro) return res.status(400).json({ erro: `Dependente ${i + 1}${x?.nome ? ` (${String(x.nome).trim()})` : ''}: ${r.erro}` });
+    if (deps.some(o => o.chave === r.dados.chave)) return res.status(400).json({ erro: `Dependente ${r.dados.nome} informado em duplicidade.` });
+    deps.push(r.dados);
+  }
+  db.exec('BEGIN');
+  try {
+    db.prepare(`INSERT INTO colaboradores (cpf, matricula, nome, email, unidade, data_admissao, sucedido, data_desligamento, elegibilidade, ativo, origem)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', 1, 'manual')`).run(cpf, d.matricula, d.nome, d.email, d.unidade, d.data_admissao, d.sucedido, d.data_desligamento);
+    const insDep = db.prepare(`INSERT INTO dependentes (cpf_titular, chave, nome, cpf, parentesco, data_nascimento, elegibilidade, ativo) VALUES (?, ?, ?, ?, ?, ?, '{}', 1)`);
+    for (const x of deps) insDep.run(cpf, x.chave, x.nome, x.cpf, x.parentesco, x.data_nascimento);
+    auditar(req, 'Incluiu colaborador', `${d.nome} · CPF ${cpf}${deps.length ? ` · ${deps.length} dependente(s): ${deps.map(x => x.nome).join(', ')}` : ''}`);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   res.status(201).json({ ok: true });
 });
 
