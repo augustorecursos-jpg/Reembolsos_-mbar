@@ -161,6 +161,8 @@ CREATE TABLE IF NOT EXISTS historico_reembolsos (
 );
 CREATE INDEX IF NOT EXISTS idx_hist_benef ON historico_reembolsos (cpf, beneficio, dependente_id, data_pagamento);
 `);
+// Competência do pagamento (AAAA-MM): é por ela que o histórico conta nos benefícios mensais e no Material Escolar.
+adicionarColuna('historico_reembolsos', 'competencia', 'TEXT');
 
 // Registro das ações de quem usa a Área do RH e a Administração.
 db.exec(`

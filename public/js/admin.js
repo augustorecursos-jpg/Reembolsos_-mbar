@@ -38,7 +38,7 @@ async function carregarVisao() {
 const CAMPOS = {
   colab: ['cpf', 'matricula', 'nome', 'email', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos', 'material'],
   dep: ['cpf_titular', 'nome', 'cpf', 'parentesco', 'data_nascimento', 'medicamento', 'educacional', 'creche', 'oculos', 'material'],
-  hist: ['colaborador', 'beneficiario', 'matricula', 'cpf', 'data_pagamento', 'valor_aprovado', 'proxima_elegibilidade', 'saldo'],
+  hist: ['beneficio', 'colaborador', 'beneficiario', 'matricula', 'cpf', 'data_pagamento', 'valor_aprovado', 'competencia', 'proxima_elegibilidade', 'saldo'],
 };
 // Nomes alternativos aceitos no cabeçalho da planilha.
 // Ex.: "Filial", "Lotação", "Data de Admissão", "CPF do Titular" e "Matrícula/Chapa" são reconhecidos.
@@ -125,20 +125,25 @@ function ligarImportacao(tipo, idArquivo, idBotao, idPrevia, nomeModo, rota) {
 ligarImportacao('colab', 'arq-colab', 'imp-colab', 'previa-colab', 'modo-colab', '/api/admin/base/colaboradores');
 ligarImportacao('dep', 'arq-dep', 'imp-dep', 'previa-dep', 'modo-dep', '/api/admin/base/dependentes');
 
-// ---------- Histórico de Óculos (pagos fora do portal) ----------
+// ---------- Histórico de reembolsos (pagos fora do portal) ----------
+const NOMES_BENEFICIO = { medicamento: 'Medicamento', educacional: 'Educacional', creche: 'Creche/Babá', oculos: 'Óculos', material: 'Material Escolar/Uniforme' };
+for (const id of ['hist-beneficio', 'filtro-hist-beneficio']) {
+  document.getElementById(id).insertAdjacentHTML('beforeend', Object.entries(NOMES_BENEFICIO).map(([k, v]) => `<option value="${k}">${ICONES[k]} ${v}</option>`).join(''));
+}
 const SITUACAO_HIST = { ok: ['ok', 'Pronta'], ja_importada: ['neutra', 'Já importada'], erro: ['nao', 'Erro'] };
 
 function tabelaConferencia(r) {
   return `
     <p><strong>${fmt(r.resumo.ok)}</strong> pronta(s) para importar · ${fmt(r.resumo.ja_importada)} já importada(s) · <strong>${fmt(r.resumo.erro)}</strong> com erro${r.resumo.avisos ? ` · ${fmt(r.resumo.avisos)} com aviso` : ''}.</p>
     <div class="tabela-wrap"><table class="tabela">
-      <tr><th>Linha</th><th>Situação</th><th>Titular (chapa)</th><th>Beneficiário</th><th>Pagamento</th><th>Valor</th><th>Próxima elegibilidade</th><th>Observação</th></tr>
+      <tr><th>Linha</th><th>Situação</th><th>Benefício</th><th>Titular (chapa)</th><th>Beneficiário</th><th>Pagamento</th><th>Valor</th><th>Efeito no saldo</th><th>Observação</th></tr>
       ${r.linhas.map(l => `<tr>
         <td>${l.linha}</td><td><span class="etiqueta ${SITUACAO_HIST[l.situacao][0]}">${SITUACAO_HIST[l.situacao][1]}</span></td>
+        <td>${l.beneficio ? `${ICONES[l.beneficio]} ${esc(l.beneficio_nome)}` : '–'}</td>
         <td>${esc(l.titular_base || l.colaborador)}<br><small class="q-dica">${esc(l.matricula)}</small></td>
         <td>${esc(l.beneficiario_base || l.beneficiario)}${l.vinculo ? `<br><small class="q-dica">${esc(l.vinculo)}</small>` : ''}</td>
         <td>${l.data_pagamento ? dataBR(l.data_pagamento) : '–'}</td><td>${l.valor ? reais(l.valor) : '–'}</td>
-        <td>${l.proxima ? dataBR(l.proxima) : '–'}</td>
+        <td><small>${esc(l.efeito || '–')}</small></td>
         <td class="q-dica">${esc([l.motivo, ...(l.avisos || [])].filter(Boolean).join(' '))}</td></tr>`).join('')}
     </table></div>`;
 }
@@ -147,6 +152,9 @@ function tabelaConferencia(r) {
   const previa = document.getElementById('previa-hist');
   const btn = document.getElementById('imp-hist');
   let linhas = [];
+  const beneficio = () => document.getElementById('hist-beneficio').value;
+  // Trocar o benefício refaz a conferência do arquivo já escolhido.
+  document.getElementById('hist-beneficio').addEventListener('change', () => document.getElementById('arq-hist').dispatchEvent(new Event('change')));
   document.getElementById('arq-hist').addEventListener('change', async (e) => {
     const arq = e.target.files[0];
     linhas = [];
@@ -156,7 +164,7 @@ function tabelaConferencia(r) {
     try {
       linhas = await lerPlanilha(arq, 'hist');
       // Conferência no servidor (sem gravar): mostra quem foi encontrado na base antes de importar.
-      const r = await api('/api/admin/historico/oculos', { method: 'POST', body: { linhas, simular: true } });
+      const r = await api('/api/admin/historico/importar', { method: 'POST', body: { linhas, beneficio: beneficio(), simular: true } });
       previa.innerHTML = tabelaConferencia(r);
       btn.textContent = `Importar ${r.resumo.ok} lançamento(s)`;
       btn.disabled = !r.resumo.ok;
@@ -165,8 +173,8 @@ function tabelaConferencia(r) {
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     try {
-      const r = await api('/api/admin/historico/oculos', { method: 'POST', body: { linhas, simular: false } });
-      previa.innerHTML = `<p>✅ <strong>${fmt(r.importadas)}</strong> lançamento(s) importado(s). Os saldos de Óculos já consideram esses pagamentos.</p>${r.resumo.erro ? tabelaConferencia({ ...r, linhas: r.linhas.filter(l => l.situacao === 'erro') }) : ''}`;
+      const r = await api('/api/admin/historico/importar', { method: 'POST', body: { linhas, beneficio: beneficio(), simular: false } });
+      previa.innerHTML = `<p>✅ <strong>${fmt(r.importadas)}</strong> lançamento(s) importado(s). Os saldos já consideram esses pagamentos.</p>${r.resumo.erro ? tabelaConferencia({ ...r, linhas: r.linhas.filter(l => l.situacao === 'erro') }) : ''}`;
       document.getElementById('arq-hist').value = '';
       btn.textContent = 'Importar';
       linhas = [];
@@ -182,17 +190,19 @@ async function carregarHistorico() {
 }
 function renderHistorico() {
   const termo = semAcento(document.getElementById('busca-hist').value);
-  const lista = historicoOculos.filter(h => !termo || semAcento([h.titular, h.beneficiario_nome, h.matricula].join(' ')).includes(termo));
+  const filtro = document.getElementById('filtro-hist-beneficio').value;
+  const lista = historicoOculos.filter(h => (!filtro || h.beneficio === filtro) && (!termo || semAcento([h.titular, h.beneficiario_nome, h.matricula].join(' ')).includes(termo)));
   const vigentes = historicoOculos.filter(h => h.vigente).length;
-  document.getElementById('qtd-hist').textContent = `· ${fmt(historicoOculos.length)} no total · ${fmt(vigentes)} ainda dentro dos 18 meses`;
+  document.getElementById('qtd-hist').textContent = `· ${fmt(historicoOculos.length)} no total · ${fmt(vigentes)} ainda contando no saldo`;
   document.getElementById('tabela-hist').innerHTML = `
-    <tr><th><input type="checkbox" id="hist-todos" aria-label="Selecionar todos"></th><th>Titular</th><th>Beneficiário</th><th>Pagamento</th><th>Valor</th><th>Próxima elegibilidade</th><th>Importado</th></tr>
+    <tr><th><input type="checkbox" id="hist-todos" aria-label="Selecionar todos"></th><th>Benefício</th><th>Titular</th><th>Beneficiário</th><th>Pagamento</th><th>Valor</th><th>Conta no saldo</th><th>Importado</th></tr>
     ${lista.map(h => `<tr class="${h.vigente ? '' : 'inativo'}"><td><input type="checkbox" data-hist="${h.id}" aria-label="Selecionar"></td>
+      <td>${h.icone} ${esc(h.beneficio_nome)}</td>
       <td>${esc(h.titular)}<br><small class="q-dica">Chapa ${esc(h.matricula)}</small></td>
       <td>${esc(h.beneficiario_nome)}<br><small class="q-dica">${esc(h.vinculo)}</small></td>
       <td>${dataBR(h.data_pagamento)}</td><td>${reais(h.valor)}</td>
-      <td>${dataBR(h.proxima)}${h.vigente ? '' : ' <small class="q-dica">(liberado)</small>'}</td>
-      <td><small class="q-dica">${dataHoraBR(h.importado_em)}<br>${esc(h.importado_por || '')}</small></td></tr>`).join('') || '<tr><td colspan="7" class="q-dica">Nenhum lançamento importado.</td></tr>'}`;
+      <td>${h.conta_ate ? `até ${dataBR(h.conta_ate)}` : `competência ${competenciaBR(h.competencia)}`}${h.vigente ? '' : ' <small class="q-dica">(encerrado)</small>'}</td>
+      <td><small class="q-dica">${dataHoraBR(h.importado_em)}<br>${esc(h.importado_por || '')}</small></td></tr>`).join('') || '<tr><td colspan="8" class="q-dica">Nenhum lançamento importado.</td></tr>'}`;
   atualizarSelecaoHist();
 }
 function atualizarSelecaoHist() {
@@ -202,13 +212,14 @@ function atualizarSelecaoHist() {
   b.textContent = n ? `Excluir ${n} selecionado(s)` : 'Excluir selecionados';
 }
 document.getElementById('busca-hist').addEventListener('input', renderHistorico);
+document.getElementById('filtro-hist-beneficio').addEventListener('change', renderHistorico);
 document.getElementById('tabela-hist').addEventListener('change', (e) => {
   if (e.target.id === 'hist-todos') document.querySelectorAll('#tabela-hist [data-hist]').forEach(c => { c.checked = e.target.checked; });
   atualizarSelecaoHist();
 });
 document.getElementById('excluir-hist').addEventListener('click', async () => {
   const ids = [...document.querySelectorAll('#tabela-hist [data-hist]:checked')].map(c => Number(c.dataset.hist));
-  if (!confirm(`Excluir ${ids.length} lançamento(s) do histórico? O saldo de Óculos desses beneficiários volta a ser calculado sem eles.`)) return;
+  if (!confirm(`Excluir ${ids.length} lançamento(s) do histórico? O saldo desses beneficiários volta a ser calculado sem eles.`)) return;
   try {
     await api('/api/admin/historico/excluir', { method: 'POST', body: { ids } });
     toast('Lançamento(s) excluído(s).');
