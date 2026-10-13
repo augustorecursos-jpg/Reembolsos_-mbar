@@ -172,7 +172,18 @@ function usoDoLimite({ cpf, beneficio, dependenteId, competencia, referencia, ex
   if (janela.tipo === 'competencia') { sql += ' AND competencia = ?'; params.push(competencia); }
   else { sql += ' AND data_documento > ?'; params.push(janela.desde); }
   const r = db.prepare(sql).get(...params);
-  return { usado: r.usado, qtd: r.qtd, janela };
+  let historico = 0;
+  let maisAntiga = null; // data mais antiga ainda dentro do período (define quando volta saldo)
+  if (janela.tipo === 'periodo') {
+    // Pagamentos feitos fora do portal (histórico importado) também consomem o limite, pela data do pagamento.
+    const h = db.prepare(`SELECT COALESCE(SUM(valor), 0) AS v, MIN(data_pagamento) AS d FROM historico_reembolsos
+      WHERE cpf = ? AND beneficio = ? AND dependente_id IS ? AND data_pagamento > ?`).get(cpf, beneficio, dependenteId ?? null, janela.desde);
+    historico = h.v;
+    const ds = db.prepare(`SELECT MIN(data_documento) AS d FROM solicitacoes WHERE cpf = ? AND beneficio = ? AND dependente_id IS ?
+      AND status IN ('analise', 'aprovado') AND id <> ? AND data_documento > ?`).get(cpf, beneficio, dependenteId ?? null, excluirId, janela.desde).d;
+    maisAntiga = [h.d, ds].filter(Boolean).sort()[0] || null;
+  }
+  return { usado: r.usado + historico, historico, qtd: r.qtd, janela, maisAntiga };
 }
 
 const dataBr = (iso) => iso.split('-').reverse().join('/');
@@ -187,9 +198,14 @@ const mesAno = (comp) => { const [a, m] = comp.split('-').map(Number); return `$
  */
 function saldo(colab, beneficio, dependenteId, competencia, referencia, config, excluirId) {
   const limite = R.limiteDoBeneficio(beneficio, colab, config);
-  const { usado, qtd, janela } = usoDoLimite({ cpf: colab.cpf, beneficio, dependenteId, competencia, referencia, excluirId }, config);
+  const { usado, historico, qtd, janela, maisAntiga } = usoDoLimite({ cpf: colab.cpf, beneficio, dependenteId, competencia, referencia, excluirId }, config);
   let disponivel = Math.max(0, limite - usado);
   let bloqueio = null;
+  // Óculos: quando o saldo acaba, informa a data em que o reembolso mais antigo sai do período de N meses.
+  const liberaEm = janela.tipo === 'periodo' && maisAntiga ? R.somarMeses(maisAntiga, janela.meses) : null;
+  if (janela.tipo === 'periodo' && !disponivel && liberaEm) {
+    bloqueio = `Limite de ${R.formatarReais(limite)} já utilizado nos últimos ${janela.meses} meses. Novo saldo a partir de ${dataBr(liberaEm)}.`;
+  }
   const jan = R.janelaDeSolicitacao(beneficio, competencia, config);
   if (jan && !jan.aberta) {
     disponivel = 0;
@@ -198,7 +214,7 @@ function saldo(colab, beneficio, dependenteId, competencia, referencia, config, 
     disponivel = 0;
     bloqueio = `Já existe uma solicitação deste dependente na competência ${mesAno(competencia)}. O próximo reembolso poderá ser solicitado na competência ${competenciaComCiclo(jan.proxima, config)}.`;
   }
-  return { limite, usado, disponivel, janela, bloqueio, janela_solicitacao: jan };
+  return { limite, usado, disponivel, janela, bloqueio, janela_solicitacao: jan, historico, libera_em: liberaEm };
 }
 
 function dependentesDe(cpf) {
@@ -220,7 +236,13 @@ function beneficiosDoColaborador(colab, hoje, config) {
       .filter(p => R.elegibilidade(codigo, colab, p.dep, hoje, config).elegivel)
       .map(p => {
         const s = saldo(colab, codigo, p.dep ? p.dep.id : null, competencia, hoje, config);
-        return { id: p.id, nome: p.nome, tipo: p.tipo, rotulo: p.rotulo, limite: s.limite, usado: s.usado, disponivel: s.disponivel, bloqueio: s.bloqueio };
+        return {
+          id: p.id, nome: p.nome, tipo: p.tipo, rotulo: p.rotulo, limite: s.limite, usado: s.usado, disponivel: s.disponivel, bloqueio: s.bloqueio,
+          libera_em: s.libera_em,
+          // Pagamentos anteriores ao portal que ainda contam no saldo (só para exibição ao colaborador).
+          historico: s.historico ? db.prepare(`SELECT data_pagamento, valor FROM historico_reembolsos WHERE cpf = ? AND beneficio = ? AND dependente_id IS ?
+            AND data_pagamento > ? ORDER BY data_pagamento`).all(colab.cpf, codigo, p.dep ? p.dep.id : null, s.janela.desde) : [],
+        };
       });
     if (!beneficiarios.length) continue;
     const limite = R.limiteDoBeneficio(codigo, colab, config);
@@ -603,8 +625,11 @@ app.get('/api/admin/solicitacoes/:id', exigirRh, (req, res) => {
     anexos: db.prepare('SELECT id, tipo, nome_original, mime, tamanho FROM anexos WHERE solicitacao_id = ? ORDER BY id').all(s.id)
       .map(a => ({ ...a, tipo_nome: R.DOCUMENTOS[a.tipo] || 'Outro documento' })),
     eventos: db.prepare('SELECT evento, detalhe, por, em, interno FROM eventos WHERE solicitacao_id = ? ORDER BY id').all(s.id),
-    saldo: { limite: sal.limite, usado: sal.usado, disponivel: sal.disponivel, escopo: b.escopo, janela: sal.janela, bloqueio: sal.bloqueio },
+    saldo: { limite: sal.limite, usado: sal.usado, disponivel: sal.disponivel, escopo: b.escopo, janela: sal.janela, bloqueio: sal.bloqueio, historico: sal.historico },
     historico,
+    // Pagamentos feitos fora do portal (histórico importado) do mesmo beneficiário.
+    pagos_fora: db.prepare(`SELECT data_pagamento, valor, beneficiario_nome FROM historico_reembolsos WHERE cpf = ? AND beneficio = ? AND dependente_id IS ?
+      ORDER BY data_pagamento DESC`).all(s.cpf, s.beneficio, s.dependente_id ?? null),
     dias_documento: R.diasEntre(s.data_documento, s.criado_em.slice(0, 10)),
   });
 });
@@ -939,6 +964,116 @@ app.post('/api/admin/base/dependentes', exigirAdmin, (req, res) => {
   }
   const ativos = db.prepare('SELECT COUNT(*) AS n FROM dependentes WHERE ativo = 1').get().n;
   res.json({ importados: validos.length, invalidas, ativos });
+});
+
+// -- Histórico de reembolsos pagos fora do portal (Óculos) --
+// Linhas: colaborador, beneficiario, matricula (chapa), cpf (opcional), data_pagamento, valor_aprovado,
+// proxima_elegibilidade e saldo (opcionais, só para conferência). simular = só a prévia, sem gravar.
+const nomeChave = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const matriculaChave = (s) => String(s ?? '').trim().toUpperCase().replace(/\.0+$/, '').replace(/^0+(?=.)/, '');
+
+app.post('/api/admin/historico/oculos', exigirAdmin, (req, res) => {
+  const linhas = Array.isArray(req.body?.linhas) ? req.body.linhas.slice(0, 5000) : [];
+  const simular = req.body?.simular !== false;
+  const config = configuracao();
+  const beneficio = 'oculos';
+  const meses = config.beneficios.oculos.periodoMeses || R.BENEFICIOS.oculos.periodoMeses;
+  const porMatricula = new Map();
+  for (const c of db.prepare('SELECT * FROM colaboradores').all()) {
+    const k = matriculaChave(c.matricula);
+    porMatricula.set(k, [...(porMatricula.get(k) || []), c]);
+  }
+  const depsDe = db.prepare('SELECT * FROM dependentes WHERE cpf_titular = ? ORDER BY ativo DESC');
+  const existe = db.prepare('SELECT 1 FROM historico_reembolsos WHERE chave = ?');
+  const resultado = linhas.map((l, i) => {
+    const out = {
+      linha: i + 2, colaborador: String(l.colaborador || '').trim(), beneficiario: String(l.beneficiario || '').trim(),
+      matricula: String(l.matricula || '').trim(), situacao: 'ok', motivo: '', avisos: [],
+    };
+    const erro = (m) => { out.situacao = 'erro'; out.motivo = m; return out; };
+    // Titular: pelo CPF (se vier) ou pela chapa/matrícula da base.
+    let colab = null;
+    const cpf = normalizarCpf(l.cpf);
+    if (cpf) colab = db.prepare('SELECT * FROM colaboradores WHERE cpf = ?').get(cpf);
+    if (!colab) {
+      const achados = porMatricula.get(matriculaChave(l.matricula)) || [];
+      if (achados.length > 1) return erro(`Chapa ${out.matricula} pertence a mais de um colaborador na base.`);
+      colab = achados[0];
+    }
+    if (!colab) return erro(`Chapa ${out.matricula || '(vazia)'} não encontrada na base de elegibilidade.`);
+    out.cpf = colab.cpf;
+    out.titular_base = colab.nome;
+    if (out.colaborador && nomeChave(out.colaborador) !== nomeChave(colab.nome)) out.avisos.push(`Na base, a chapa é de ${colab.nome}.`);
+    if (!colab.ativo || colab.excluido_em) out.avisos.push('Colaborador fora da base atual (o histórico vale se ele voltar).');
+    // Beneficiário: o próprio titular ou um dependente dele, pelo nome.
+    const nb = nomeChave(out.beneficiario || out.colaborador);
+    let dep = null;
+    if (nb !== nomeChave(colab.nome) && nb !== nomeChave(out.colaborador)) {
+      const deps = depsDe.all(colab.cpf);
+      dep = deps.find(d => nomeChave(d.nome) === nb)
+        || (() => { const parecidos = deps.filter(d => nomeChave(d.nome).startsWith(nb) || nb.startsWith(nomeChave(d.nome))); return parecidos.length === 1 ? parecidos[0] : null; })();
+      if (!dep) return erro(`Beneficiário “${out.beneficiario}” não encontrado entre os dependentes de ${colab.nome}.`);
+      if (nomeChave(dep.nome) !== nb) out.avisos.push(`Associado ao dependente “${dep.nome}”.`);
+      if (!R.BENEFICIOS.oculos.parentescos.includes(dep.parentesco)) out.avisos.push(`Vínculo ${R.PARENTESCOS[dep.parentesco] || dep.parentesco}: Óculos é só para titular e cônjuge.`);
+    }
+    out.vinculo = dep ? (R.PARENTESCOS[dep.parentesco] || dep.parentesco) : 'Titular';
+    out.beneficiario_base = dep ? dep.nome : colab.nome;
+    const data = R.normalizarData(l.data_pagamento);
+    if (!data) return erro('Data do pagamento inválida.');
+    if (data > R.hojeISO()) return erro('Data do pagamento no futuro.');
+    const valor = R.paraCentavos(l.valor_aprovado);
+    if (!valor || valor <= 0) return erro('Valor aprovado inválido.');
+    out.data_pagamento = data;
+    out.valor = valor;
+    out.proxima = R.somarMeses(data, meses);
+    const limite = R.limiteDoBeneficio(beneficio, colab, config);
+    if (valor > limite) out.avisos.push(`Valor acima do limite de ${R.formatarReais(limite)}.`);
+    const prox = l.proxima_elegibilidade ? R.normalizarData(l.proxima_elegibilidade) : null;
+    if (prox && prox !== out.proxima) out.avisos.push(`Próxima elegibilidade na planilha (${dataBr(prox)}) difere da regra (${dataBr(out.proxima)}).`);
+    if (out.proxima <= R.hojeISO()) out.avisos.push('Já fora do período de 18 meses: não afeta mais o saldo.');
+    out.chave = `${colab.cpf}|${dep ? dep.id : 0}|${beneficio}|${data}|${valor}`;
+    out.dependente_id = dep ? dep.id : null;
+    if (existe.get(out.chave)) { out.situacao = 'ja_importada'; out.motivo = 'Já importada antes.'; }
+    return out;
+  });
+  const validas = resultado.filter(x => x.situacao === 'ok');
+  // Duas linhas iguais no mesmo arquivo contam uma vez só.
+  const vistas = new Set();
+  for (const x of validas) { if (vistas.has(x.chave)) { x.situacao = 'ja_importada'; x.motivo = 'Linha repetida na planilha.'; } vistas.add(x.chave); }
+  let importadas = 0;
+  if (!simular) {
+    const ins = db.prepare(`INSERT OR IGNORE INTO historico_reembolsos (chave, cpf, dependente_id, beneficio, beneficiario_nome, data_pagamento, valor, importado_por)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+    db.exec('BEGIN');
+    try {
+      for (const x of resultado.filter(y => y.situacao === 'ok')) importadas += Number(ins.run(x.chave, x.cpf, x.dependente_id, beneficio, x.beneficiario_base, x.data_pagamento, x.valor, req.rh.nome).changes);
+      auditar(req, 'Importou histórico de Óculos (pagos fora do portal)', `${importadas} lançamento(s) · ${resultado.filter(x => x.situacao === 'erro').length} com erro`);
+      db.exec('COMMIT');
+    } catch (e) { db.exec('ROLLBACK'); throw e; }
+  }
+  const conta = (s) => resultado.filter(x => x.situacao === s).length;
+  res.json({ simulado: simular, importadas, resumo: { ok: conta('ok'), ja_importada: conta('ja_importada'), erro: conta('erro'), avisos: resultado.filter(x => x.avisos.length).length }, linhas: resultado.map(({ chave, ...x }) => x) });
+});
+
+app.get('/api/admin/historico', exigirAdmin, (_req, res) => {
+  const config = configuracao();
+  const meses = config.beneficios.oculos.periodoMeses || R.BENEFICIOS.oculos.periodoMeses;
+  const hoje = R.hojeISO();
+  res.json(db.prepare(`SELECT h.*, c.nome AS titular, c.matricula, d.parentesco FROM historico_reembolsos h
+    JOIN colaboradores c ON c.cpf = h.cpf LEFT JOIN dependentes d ON d.id = h.dependente_id ORDER BY h.data_pagamento DESC, c.nome`).all()
+    .map(h => {
+      const proxima = R.somarMeses(h.data_pagamento, meses);
+      return { ...h, vinculo: h.parentesco ? (R.PARENTESCOS[h.parentesco] || h.parentesco) : 'Titular', proxima, vigente: proxima > hoje };
+    }));
+});
+
+app.post('/api/admin/historico/excluir', exigirAdmin, (req, res) => {
+  const ids = (Array.isArray(req.body?.ids) ? req.body.ids : []).map(Number).filter(Number.isInteger);
+  if (!ids.length) return res.status(400).json({ erro: 'Selecione ao menos um lançamento.' });
+  const lista = db.prepare(`SELECT h.beneficiario_nome, h.data_pagamento, h.valor FROM historico_reembolsos h WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids);
+  db.prepare(`DELETE FROM historico_reembolsos WHERE id IN (${ids.map(() => '?').join(',')})`).run(...ids);
+  auditar(req, 'Excluiu lançamento(s) do histórico de Óculos', lista.map(h => `${h.beneficiario_nome} · ${dataBr(h.data_pagamento)} · ${R.formatarReais(h.valor)}`).join('; ').slice(0, 900));
+  res.json({ ok: true, excluidos: lista.length });
 });
 
 app.get('/api/admin/importacoes', exigirAdmin, (_req, res) => {

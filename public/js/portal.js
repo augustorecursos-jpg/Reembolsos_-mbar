@@ -207,7 +207,8 @@ function renderBeneficio(codigo) {
       </table></div>
       ${b.escopo === 'familia_mes' ? '<p class="q-dica" style="margin:.8rem 0 0">O limite é compartilhado: o valor utilizado por qualquer pessoa do grupo familiar reduz o saldo de todos no mês.</p>' : ''}
       ${b.escopo === 'dependente_janela' ? `<p class="q-dica" style="margin:.8rem 0 0">Um reembolso por dependente em cada competência de solicitação (${esc(b.janela.nomes.join(' e '))}). O valor não utilizado não acumula para a seguinte.${b.janela.aberta ? '' : ` Próxima: competência <strong>${esc(b.janela.proxima_nome)}</strong>, com envios a partir de <strong>${dataBR(b.janela.proxima_inicio)}</strong>.`}</p>` : ''}
-      ${b.beneficiarios.some(x => x.bloqueio) && b.janela?.aberta ? `<ul class="q-dica" style="margin:.5rem 0 0">${b.beneficiarios.filter(x => x.bloqueio).map(x => `<li>${esc(x.nome.split(' ')[0])}: ${esc(x.bloqueio)}</li>`).join('')}</ul>` : ''}
+      ${b.beneficiarios.some(x => x.bloqueio) && (!b.janela || b.janela.aberta) ? `<ul class="q-dica" style="margin:.5rem 0 0">${b.beneficiarios.filter(x => x.bloqueio).map(x => `<li>${esc(x.nome.split(' ')[0])}: ${esc(x.bloqueio)}</li>`).join('')}</ul>` : ''}
+      ${b.beneficiarios.some(x => x.historico?.length) ? `<p class="q-dica" style="margin:.6rem 0 0">Reembolsos pagos antes do portal e considerados no saldo: ${b.beneficiarios.filter(x => x.historico?.length).map(x => x.historico.map(h => `${esc(x.nome.split(' ')[0])} — ${reais(h.valor)} em ${dataBR(h.data_pagamento)}`).join('; ')).join('; ')}.</p>` : ''}
     </div>
     <h2 class="titulo-secao">Histórico deste benefício</h2>
     <div class="cartao">
@@ -222,6 +223,7 @@ function renderBeneficio(codigo) {
 
 /** Motivo curto para o beneficiário sem saldo (material escolar: fora da janela ou já solicitado nela). */
 function motivoSemSaldo(b, x) {
+  if (x.libera_em && !b.janela) return `limite usado · novo saldo em ${dataBR(x.libera_em)}`;
   if (!x.bloqueio || !b.janela) return 'limite atingido';
   return b.janela.aberta ? `já solicitado · próximo a partir de ${dataBR(b.janela.proxima_inicio)}` : `disponível a partir de ${dataBR(b.janela.proxima_inicio)}`;
 }

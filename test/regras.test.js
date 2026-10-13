@@ -99,6 +99,9 @@ test('óculos: janela de 18 meses', () => {
   const j = R.janelaDoLimite('oculos', config, '2026-10', '2026-10-05');
   assert.deepEqual(j, { tipo: 'periodo', desde: '2025-04-05', ate: '2026-10-05', meses: 18 });
   assert.equal(R.somarMeses('2026-08-31', -18), '2025-02-28');
+  // Histórico importado: pago em 29/08/2026 → próxima elegibilidade 29/02/2028 (como na planilha do RH).
+  assert.equal(R.somarMeses('2026-08-29', 18), '2028-02-29');
+  assert.equal(R.somarMeses('2026-09-10', 18), '2028-03-10');
 });
 
 test('conversões de data, valor e parentesco', () => {

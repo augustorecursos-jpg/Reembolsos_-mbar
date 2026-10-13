@@ -38,6 +38,7 @@ async function carregarVisao() {
 const CAMPOS = {
   colab: ['cpf', 'matricula', 'nome', 'email', 'unidade', 'data_admissao', 'sucedido', 'data_desligamento', 'medicamento', 'educacional', 'creche', 'oculos', 'material'],
   dep: ['cpf_titular', 'nome', 'cpf', 'parentesco', 'data_nascimento', 'medicamento', 'educacional', 'creche', 'oculos', 'material'],
+  hist: ['colaborador', 'beneficiario', 'matricula', 'cpf', 'data_pagamento', 'valor_aprovado', 'proxima_elegibilidade', 'saldo'],
 };
 // Nomes alternativos aceitos no cabeçalho da planilha.
 // Ex.: "Filial", "Lotação", "Data de Admissão", "CPF do Titular" e "Matrícula/Chapa" são reconhecidos.
@@ -47,6 +48,8 @@ const SINONIMOS = {
   admissao: 'data_admissao', desligamento: 'data_desligamento', nascimento: 'data_nascimento', titular: 'cpf_titular',
   creche_baba: 'creche', baba: 'creche', educacao: 'educacional', medicamentos: 'medicamento', nome_dependente: 'nome', dependente: 'nome',
   material_escolar: 'material', material_escolar_uniforme: 'material', uniforme: 'material', material_uniforme: 'material',
+  pagamento: 'data_pagamento', data_pgto: 'data_pagamento', valor: 'valor_aprovado', valor_pago: 'valor_aprovado',
+  proxima_elegibilidade: 'proxima_elegibilidade', titular_colaborador: 'colaborador', nome_beneficiario: 'beneficiario',
   nome_completo: 'nome', nome_colaborador: 'nome', grau_parentesco: 'parentesco',
 };
 /** Normaliza o cabeçalho: sem acentos, maiúsculas ou espaços, e sem “de/do/da” (“Data de Admissão” → data_admissao). */
@@ -61,7 +64,7 @@ async function lerPlanilha(arquivo, tipo) {
   // As datas em DD/MM/AAAA são convertidas no servidor; no Excel, células de data chegam como Date.
   const csv = /\.csv$/i.test(arquivo.name);
   const wb = XLSX.read(await arquivo.arrayBuffer(), csv ? { type: 'array', raw: true, codepage: 65001 } : { type: 'array', cellDates: true });
-  const nomeAba = wb.SheetNames.find(n => semAcento(n).startsWith(tipo === 'colab' ? 'colab' : 'depend')) || wb.SheetNames[0];
+  const nomeAba = wb.SheetNames.find(n => semAcento(n).startsWith({ colab: 'colab', dep: 'depend', hist: 'hist' }[tipo])) || wb.SheetNames[0];
   const matriz = XLSX.utils.sheet_to_json(wb.Sheets[nomeAba], { header: 1, defval: '', raw: true });
   if (!matriz.length) return [];
   const campos = CAMPOS[tipo];
@@ -122,7 +125,99 @@ function ligarImportacao(tipo, idArquivo, idBotao, idPrevia, nomeModo, rota) {
 ligarImportacao('colab', 'arq-colab', 'imp-colab', 'previa-colab', 'modo-colab', '/api/admin/base/colaboradores');
 ligarImportacao('dep', 'arq-dep', 'imp-dep', 'previa-dep', 'modo-dep', '/api/admin/base/dependentes');
 
+// ---------- Histórico de Óculos (pagos fora do portal) ----------
+const SITUACAO_HIST = { ok: ['ok', 'Pronta'], ja_importada: ['neutra', 'Já importada'], erro: ['nao', 'Erro'] };
+
+function tabelaConferencia(r) {
+  return `
+    <p><strong>${fmt(r.resumo.ok)}</strong> pronta(s) para importar · ${fmt(r.resumo.ja_importada)} já importada(s) · <strong>${fmt(r.resumo.erro)}</strong> com erro${r.resumo.avisos ? ` · ${fmt(r.resumo.avisos)} com aviso` : ''}.</p>
+    <div class="tabela-wrap"><table class="tabela">
+      <tr><th>Linha</th><th>Situação</th><th>Titular (chapa)</th><th>Beneficiário</th><th>Pagamento</th><th>Valor</th><th>Próxima elegibilidade</th><th>Observação</th></tr>
+      ${r.linhas.map(l => `<tr>
+        <td>${l.linha}</td><td><span class="etiqueta ${SITUACAO_HIST[l.situacao][0]}">${SITUACAO_HIST[l.situacao][1]}</span></td>
+        <td>${esc(l.titular_base || l.colaborador)}<br><small class="q-dica">${esc(l.matricula)}</small></td>
+        <td>${esc(l.beneficiario_base || l.beneficiario)}${l.vinculo ? `<br><small class="q-dica">${esc(l.vinculo)}</small>` : ''}</td>
+        <td>${l.data_pagamento ? dataBR(l.data_pagamento) : '–'}</td><td>${l.valor ? reais(l.valor) : '–'}</td>
+        <td>${l.proxima ? dataBR(l.proxima) : '–'}</td>
+        <td class="q-dica">${esc([l.motivo, ...(l.avisos || [])].filter(Boolean).join(' '))}</td></tr>`).join('')}
+    </table></div>`;
+}
+
+(() => {
+  const previa = document.getElementById('previa-hist');
+  const btn = document.getElementById('imp-hist');
+  let linhas = [];
+  document.getElementById('arq-hist').addEventListener('change', async (e) => {
+    const arq = e.target.files[0];
+    linhas = [];
+    btn.disabled = true;
+    previa.innerHTML = '';
+    if (!arq) return;
+    try {
+      linhas = await lerPlanilha(arq, 'hist');
+      // Conferência no servidor (sem gravar): mostra quem foi encontrado na base antes de importar.
+      const r = await api('/api/admin/historico/oculos', { method: 'POST', body: { linhas, simular: true } });
+      previa.innerHTML = tabelaConferencia(r);
+      btn.textContent = `Importar ${r.resumo.ok} lançamento(s)`;
+      btn.disabled = !r.resumo.ok;
+    } catch (err) { previa.innerHTML = `<p class="aviso">Não foi possível ler o arquivo: ${esc(err.message)}</p>`; }
+  });
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      const r = await api('/api/admin/historico/oculos', { method: 'POST', body: { linhas, simular: false } });
+      previa.innerHTML = `<p>✅ <strong>${fmt(r.importadas)}</strong> lançamento(s) importado(s). Os saldos de Óculos já consideram esses pagamentos.</p>${r.resumo.erro ? tabelaConferencia({ ...r, linhas: r.linhas.filter(l => l.situacao === 'erro') }) : ''}`;
+      document.getElementById('arq-hist').value = '';
+      btn.textContent = 'Importar';
+      linhas = [];
+      carregarHistorico();
+    } catch (err) { toast(err.message, 'erro'); btn.disabled = false; }
+  });
+})();
+
+let historicoOculos = [];
+async function carregarHistorico() {
+  historicoOculos = await api('/api/admin/historico');
+  renderHistorico();
+}
+function renderHistorico() {
+  const termo = semAcento(document.getElementById('busca-hist').value);
+  const lista = historicoOculos.filter(h => !termo || semAcento([h.titular, h.beneficiario_nome, h.matricula].join(' ')).includes(termo));
+  const vigentes = historicoOculos.filter(h => h.vigente).length;
+  document.getElementById('qtd-hist').textContent = `· ${fmt(historicoOculos.length)} no total · ${fmt(vigentes)} ainda dentro dos 18 meses`;
+  document.getElementById('tabela-hist').innerHTML = `
+    <tr><th><input type="checkbox" id="hist-todos" aria-label="Selecionar todos"></th><th>Titular</th><th>Beneficiário</th><th>Pagamento</th><th>Valor</th><th>Próxima elegibilidade</th><th>Importado</th></tr>
+    ${lista.map(h => `<tr class="${h.vigente ? '' : 'inativo'}"><td><input type="checkbox" data-hist="${h.id}" aria-label="Selecionar"></td>
+      <td>${esc(h.titular)}<br><small class="q-dica">Chapa ${esc(h.matricula)}</small></td>
+      <td>${esc(h.beneficiario_nome)}<br><small class="q-dica">${esc(h.vinculo)}</small></td>
+      <td>${dataBR(h.data_pagamento)}</td><td>${reais(h.valor)}</td>
+      <td>${dataBR(h.proxima)}${h.vigente ? '' : ' <small class="q-dica">(liberado)</small>'}</td>
+      <td><small class="q-dica">${dataHoraBR(h.importado_em)}<br>${esc(h.importado_por || '')}</small></td></tr>`).join('') || '<tr><td colspan="7" class="q-dica">Nenhum lançamento importado.</td></tr>'}`;
+  atualizarSelecaoHist();
+}
+function atualizarSelecaoHist() {
+  const n = document.querySelectorAll('#tabela-hist [data-hist]:checked').length;
+  const b = document.getElementById('excluir-hist');
+  b.disabled = !n;
+  b.textContent = n ? `Excluir ${n} selecionado(s)` : 'Excluir selecionados';
+}
+document.getElementById('busca-hist').addEventListener('input', renderHistorico);
+document.getElementById('tabela-hist').addEventListener('change', (e) => {
+  if (e.target.id === 'hist-todos') document.querySelectorAll('#tabela-hist [data-hist]').forEach(c => { c.checked = e.target.checked; });
+  atualizarSelecaoHist();
+});
+document.getElementById('excluir-hist').addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('#tabela-hist [data-hist]:checked')].map(c => Number(c.dataset.hist));
+  if (!confirm(`Excluir ${ids.length} lançamento(s) do histórico? O saldo de Óculos desses beneficiários volta a ser calculado sem eles.`)) return;
+  try {
+    await api('/api/admin/historico/excluir', { method: 'POST', body: { ids } });
+    toast('Lançamento(s) excluído(s).');
+    carregarHistorico();
+  } catch (err) { toast(err.message, 'erro'); }
+});
+
 async function carregarBase() {
+  carregarHistorico().catch(err => toast(err.message, 'erro'));
   const cargas = await api('/api/admin/importacoes');
   document.getElementById('tabela-cargas').innerHTML = `
     <tr><th>Data</th><th>Base</th><th>Modo</th><th>Linhas importadas</th><th>Ignoradas</th><th>Por</th></tr>

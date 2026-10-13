@@ -144,6 +144,24 @@ adicionarColuna('colaboradores', 'motivo_bloqueio', 'TEXT');
 adicionarColuna('colaboradores', 'excluido_em', 'TEXT');
 adicionarColuna('colaboradores', 'origem', "TEXT NOT NULL DEFAULT 'base'"); // base | manual
 
+// Reembolsos pagos fora do portal (ex.: Óculos antes da implantação), importados pelo administrador.
+// Contam no saldo do benefício pela data do pagamento; não entram na folha, no painel nem na análise.
+db.exec(`
+CREATE TABLE IF NOT EXISTS historico_reembolsos (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  chave             TEXT NOT NULL UNIQUE,              -- cpf|dependente|benefício|data|valor (evita importar duas vezes)
+  cpf               TEXT NOT NULL REFERENCES colaboradores(cpf),
+  dependente_id     INTEGER REFERENCES dependentes(id), -- NULL = o próprio titular
+  beneficio         TEXT NOT NULL,
+  beneficiario_nome TEXT NOT NULL,
+  data_pagamento    TEXT NOT NULL,                     -- AAAA-MM-DD
+  valor             INTEGER NOT NULL,                  -- centavos
+  importado_por     TEXT,
+  importado_em      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_hist_benef ON historico_reembolsos (cpf, beneficio, dependente_id, data_pagamento);
+`);
+
 // Registro das ações de quem usa a Área do RH e a Administração.
 db.exec(`
 CREATE TABLE IF NOT EXISTS auditoria (

@@ -174,7 +174,10 @@ async function abrirAnalise(id) {
         <div class="tabela-wrap"><table class="tabela">
           <tr><th>Protocolo</th><th>Comp.</th><th>Beneficiário</th><th>Documento</th><th>Valor</th><th>Status</th></tr>
           ${s.historico.map(h => `<tr><td>${esc(h.protocolo)}</td><td>${competenciaBR(h.competencia)}</td><td>${esc(h.beneficiario_nome)}</td><td>${dataBR(h.data_documento)}</td>
-            <td>${reais(h.status === 'aprovado' ? h.valor_aprovado : h.valor_solicitado)}</td><td>${etiquetaStatus(h.status)}</td></tr>`).join('') || '<tr><td colspan="6">Primeira solicitação deste benefício.</td></tr>'}
+            <td>${reais(h.status === 'aprovado' ? h.valor_aprovado : h.valor_solicitado)}</td><td>${etiquetaStatus(h.status)}</td></tr>`).join('')}
+          ${(s.pagos_fora || []).map(h => `<tr><td><small class="q-dica">Pago fora do portal</small></td><td>–</td><td>${esc(h.beneficiario_nome)}</td><td>${dataBR(h.data_pagamento)}</td>
+            <td>${reais(h.valor)}</td><td><span class="etiqueta neutra">Histórico</span></td></tr>`).join('')}
+          ${s.historico.length || (s.pagos_fora || []).length ? '' : '<tr><td colspan="6">Primeira solicitação deste benefício.</td></tr>'}
         </table></div>
       </div>
       <div class="det-bloco">
@@ -182,7 +185,7 @@ async function abrirAnalise(id) {
         <div class="cartao" style="padding:1rem">
           <div class="saldo">
             <span class="saldo-topo"><span>Limite (${esc(TEXTO_ESCOPO[sal.escopo])})</span><strong>${reais(sal.limite)}</strong></span>
-            <span class="saldo-topo"><span>Já comprometido em outras solicitações</span><strong>${reais(sal.usado)}</strong></span>
+            <span class="saldo-topo"><span>Já comprometido em outras solicitações${sal.historico ? ` <small>(inclui ${reais(sal.historico)} pagos fora do portal)</small>` : ''}</span><strong>${reais(sal.usado)}</strong></span>
             <span class="barra-prog ${sal.disponivel ? '' : 'saldo-zero'}"><i style="width:${Math.min(100, (sal.usado / Math.max(1, sal.limite)) * 100)}%"></i></span>
             <span class="saldo-topo"><span>Saldo para esta solicitação</span><strong>${reais(sal.disponivel)}</strong></span>
             <small>Período considerado: ${esc(janela)}. Aprovadas contam pelo valor aprovado e em análise pelo valor solicitado.</small>

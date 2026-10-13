@@ -132,6 +132,24 @@
           </div>
         </div>
         <p class="q-dica" style="margin-top:.8rem">O modelo em Excel tem as abas “Instruções”, “Colaboradores” e “Dependentes”: preencha e importe o mesmo arquivo nos dois quadros — cada importação lê a sua aba. Também aceita CSV (<a href="exemplos/base-colaboradores-modelo.csv" download>colaboradores</a> · <a href="exemplos/base-dependentes-modelo.csv" download>dependentes</a>).</p>
+        <div class="cartao" style="margin-top:1.4rem" id="cartao-historico">
+          <h3>👓 Histórico de Óculos <small>· reembolsos pagos fora do portal</small></h3>
+          <p class="q-dica">Cada linha conta no saldo do beneficiário (R$ 1.500 a cada 18 meses) a partir da <strong>data do pagamento</strong>: com saldo zerado ele fica bloqueado até a próxima elegibilidade; com saldo restante, pode pedir só o que sobrou.
+            Esses lançamentos <strong>não entram na folha</strong> nem no painel. Colunas: COLABORADOR, BENEFICIÁRIO, CHAPA (ou CPF do titular), DATA PAGAMENTO, VALOR APROVADO; PRÓXIMA ELEGIBILIDADE e SALDO são opcionais (só conferência).</p>
+          <div class="importar">
+            <input type="file" id="arq-hist" accept=".xlsx,.xls,.csv" class="campo">
+            <button class="btn btn-laranja" id="imp-hist" disabled>Importar</button>
+          </div>
+          <div class="previa" id="previa-hist"></div>
+          <div class="cab-tabela" style="margin-top:1.2rem">
+            <h4 style="margin:0">Lançamentos importados <small id="qtd-hist" class="q-dica"></small></h4>
+            <div class="filtros">
+              <input class="campo" id="busca-hist" placeholder="Nome ou chapa…" aria-label="Buscar no histórico">
+              <button class="btn btn-perigo btn-sm" id="excluir-hist" disabled>Excluir selecionados</button>
+            </div>
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="tabela-hist"></table></div>
+        </div>
         <div class="cartao" style="margin-top:1.4rem">
           <h3>🕓 Últimas cargas</h3>
           <div class="tabela-wrap"><table class="tabela" id="tabela-cargas"></table></div>
