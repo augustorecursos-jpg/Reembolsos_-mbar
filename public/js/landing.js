@@ -33,42 +33,36 @@ form.addEventListener('submit', async (e) => {
 
 const dois = (n) => String(n).padStart(2, '0');
 
-/** Calendário do mês atual com a janela de envio destacada e o dia de hoje marcado. */
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+/**
+ * Calendário do mês atual. Envios todos os dias: até o dia do fechamento (padrão 10) a competência é a do
+ * próprio mês; a partir do dia seguinte (11), a do mês seguinte.
+ */
 function desenharCalendario(hoje, p) {
   const [ano, mes, dia] = hoje.split('-').map(Number);
   const primeiroDiaSemana = new Date(Date.UTC(ano, mes - 1, 1)).getUTCDay();
   const diasNoMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-  // Com abertura excepcional, a janela vai até a data informada pelo RH (se for neste mês).
-  let fim = p.dia_fim;
-  if (p.aberto && p.encerra_em && p.encerra_em.slice(0, 7) === hoje.slice(0, 7)) fim = Math.max(fim, Number(p.encerra_em.slice(8, 10)));
-  const mesAno = new Date(Date.UTC(ano, mes - 1, 1)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-  const nomeMes = mesAno.charAt(0).toUpperCase() + mesAno.slice(1); // "Outubro de 2026"
+  const nomeMes = `${MESES[mes - 1].charAt(0).toUpperCase()}${MESES[mes - 1].slice(1)} de ${ano}`;
   const celulas = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(s => `<span class="sem" aria-hidden="true">${s}</span>`);
   for (let i = 0; i < primeiroDiaSemana; i++) celulas.push('<span></span>');
   for (let d = 1; d <= diasNoMes; d++) {
-    const classes = ['dia'];
-    if (d >= p.dia_inicio && d <= fim) classes.push('janela');
-    if (d === p.dia_inicio) classes.push('inicio');
-    if (d === fim) classes.push('fim');
+    const classes = ['dia', d <= p.dia_fim ? 'janela' : 'proxima'];
+    if (d === p.dia_fim) classes.push('fechamento');
     if (d < dia) classes.push('passado');
     if (d === dia) classes.push('hoje');
-    celulas.push(`<span class="${classes.join(' ')}"${d === dia ? ' aria-current="date"' : ''}>${d}</span>`);
+    celulas.push(`<span class="${classes.join(' ')}"${d === dia ? ' aria-current="date"' : ''}${d === p.dia_fim ? ' title="Fechamento da competência"' : ''}>${d}</span>`);
   }
   document.getElementById('cal-mes').innerHTML = `<h3>${nomeMes}</h3><div class="cal-grade">${celulas.join('')}</div>`;
+  const prox = mes === 12 ? 0 : mes;
+  document.getElementById('leg-atual').textContent = `Competência ${MESES[mes - 1]} (até dia ${dois(p.dia_fim)})`;
+  document.getElementById('leg-proxima').textContent = `Competência ${MESES[prox]} (a partir do dia ${dois(p.dia_inicio)})`;
 
   // Mesmo texto no calendário completo e no resumo ao lado do login.
-  let status, titulo, sub;
-  if (p.aberto) {
-    status = 'Envios abertos';
-    titulo = p.dias_restantes === 1 ? 'Último dia para enviar' : `Faltam ${p.dias_restantes} dias para enviar`;
-    sub = `Envie até ${dataBR(p.encerra_em)} · competência ${competenciaBR(p.competencia)}`;
-  } else {
-    status = 'Envios fechados';
-    titulo = `Reabre em ${dataBR(p.proxima_abertura)}`;
-    sub = `Envios do dia ${dois(p.dia_inicio)} ao dia ${dois(p.dia_fim)} de cada mês. Consultas liberadas.`;
-  }
-  for (const [prefixo, el] of [['cal', document.getElementById('calendario')], ['res', document.getElementById('prazo-resumo')]]) {
-    el.classList.toggle('fechado', !p.aberto);
+  const status = 'Envios abertos todos os dias';
+  const titulo = p.dias_restantes === 1 ? `Hoje fecha a competência ${competenciaBR(p.competencia)}` : `Faltam ${p.dias_restantes} dias para o fechamento`;
+  const sub = `Ciclo de ${dataBR(p.inicio_ciclo)} a ${dataBR(p.encerra_em)} · competência ${competenciaBR(p.competencia)}`;
+  for (const prefixo of ['cal', 'res']) {
     document.getElementById(`${prefixo}-status`).textContent = status;
     document.getElementById(`${prefixo}-titulo`).textContent = titulo;
     document.getElementById(`${prefixo}-sub`).textContent = sub;
@@ -108,7 +102,7 @@ function desenharCalendario(hoje, p) {
         </article>`;
     }).join('');
   } catch {
-    document.getElementById('cal-titulo').textContent = 'Envios do dia 01 ao dia 10 de cada mês';
-    document.getElementById('res-titulo').textContent = 'Envios do dia 01 ao dia 10 de cada mês';
+    document.getElementById('cal-titulo').textContent = 'Envios todos os dias: do dia 11 ao dia 10 do mês seguinte';
+    document.getElementById('res-titulo').textContent = 'Envios todos os dias: do dia 11 ao dia 10 do mês seguinte';
   }
 })();

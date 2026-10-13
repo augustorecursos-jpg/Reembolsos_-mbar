@@ -121,6 +121,14 @@ function configuracao() {
   return R.mesclarConfiguracao(r ? JSON.parse(r.valor) : null);
 }
 
+/** Competência do ciclo em andamento (envios de hoje). */
+const competenciaAtual = () => R.competenciaDe(R.hojeISO(), configuracao().dia_fim);
+/** Competência da folha: a do último ciclo fechado (no dia 11, a que fechou no dia 10). */
+const competenciaDaFolha = () => {
+  const [a, m] = competenciaAtual().split('-').map(Number);
+  return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, '0')}`;
+};
+
 /** Limita tentativas de login com falha por IP. Só as falhas contam. */
 function limitadorDeFalhas({ maximo, janelaMin }) {
   const falhas = new Map();
@@ -167,6 +175,9 @@ function usoDoLimite({ cpf, beneficio, dependenteId, competencia, referencia, ex
   return { usado: r.usado, qtd: r.qtd, janela };
 }
 
+const dataBr = (iso) => iso.split('-').reverse().join('/');
+/** "fevereiro/2027 (envios de 11/01/2027 a 10/02/2027)" */
+const competenciaComCiclo = (comp, config) => { const c = R.cicloDaCompetencia(comp, config.dia_fim); return `${mesAno(comp)} (envios de ${dataBr(c.inicio)} a ${dataBr(c.fim)})`; };
 const mesAno = (comp) => { const [a, m] = comp.split('-').map(Number); return `${['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][m - 1]}/${a}`; };
 
 /**
@@ -182,10 +193,10 @@ function saldo(colab, beneficio, dependenteId, competencia, referencia, config, 
   const jan = R.janelaDeSolicitacao(beneficio, competencia, config);
   if (jan && !jan.aberta) {
     disponivel = 0;
-    bloqueio = `Solicitado somente em ${jan.nomes.join(' e ')}. Próxima janela: ${mesAno(jan.proxima)}.`;
+    bloqueio = `Solicitado somente nas competências de ${jan.nomes.join(' e ')}. Próxima: ${competenciaComCiclo(jan.proxima, config)}.`;
   } else if (jan && qtd > 0) {
     disponivel = 0;
-    bloqueio = `Já existe uma solicitação deste dependente em ${mesAno(competencia)}. O próximo reembolso poderá ser solicitado em ${mesAno(jan.proxima)}.`;
+    bloqueio = `Já existe uma solicitação deste dependente na competência ${mesAno(competencia)}. O próximo reembolso poderá ser solicitado na competência ${competenciaComCiclo(jan.proxima, config)}.`;
   }
   return { limite, usado, disponivel, janela, bloqueio, janela_solicitacao: jan };
 }
@@ -197,7 +208,7 @@ function dependentesDe(cpf) {
 
 /** Benefícios disponíveis ao colaborador, cada um só com os beneficiários elegíveis e o saldo de cada um. */
 function beneficiosDoColaborador(colab, hoje, config) {
-  const competencia = R.competenciaDe(hoje);
+  const competencia = R.competenciaDe(hoje, config.dia_fim);
   const deps = dependentesDe(colab.cpf);
   const lista = [];
   for (const codigo of R.CODIGOS) {
@@ -216,7 +227,7 @@ function beneficiosDoColaborador(colab, hoje, config) {
     lista.push({
       codigo, nome: b.nome, curto: b.curto, icone: b.icone, escopo: b.escopo, limite,
       periodo_meses: config.beneficios[codigo].periodoMeses,
-      janela: (() => { const j = R.janelaDeSolicitacao(codigo, competencia, config); return j && { ...j, proxima_nome: mesAno(j.proxima) }; })(),
+      janela: (() => { const j = R.janelaDeSolicitacao(codigo, competencia, config); return j && { ...j, proxima_nome: mesAno(j.proxima), proxima_inicio: R.cicloDaCompetencia(j.proxima, config.dia_fim).inicio }; })(),
       elegiveis: b.elegiveis, observacao: b.observacao,
       documentos: b.documentos.map(d => ({ tipo: d, nome: R.DOCUMENTOS[d] })),
       beneficiarios,
@@ -358,7 +369,7 @@ app.get('/api/saldo', exigirColaborador, (req, res) => {
   if (!R.BENEFICIOS[beneficio]) return res.status(400).json({ erro: 'Benefício inválido.' });
   const depId = Number(req.query.beneficiario) || null;
   const referencia = R.normalizarData(req.query.data_documento) || hoje;
-  const s = saldo(req.colab, beneficio, depId, R.competenciaDe(hoje), referencia > hoje ? hoje : referencia, config);
+  const s = saldo(req.colab, beneficio, depId, R.competenciaDe(hoje, config.dia_fim), referencia > hoje ? hoje : referencia, config);
   res.json({ limite: s.limite, usado: s.usado, disponivel: s.disponivel });
 });
 
@@ -373,10 +384,7 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
   const files = req.files || {};
   const falhar = (msg, status = 400) => { apagarArquivos(files); res.status(status).json({ erro: msg }); };
 
-  const periodo = R.situacaoPeriodo(config, hoje);
-  if (!periodo.aberto) {
-    return falhar(`O portal recebe solicitações do dia ${String(config.dia_inicio).padStart(2, '0')} ao dia ${String(config.dia_fim).padStart(2, '0')} de cada mês. Próxima abertura: ${periodo.proxima_abertura.split('-').reverse().join('/')}.`);
-  }
+  // Envios aceitos todos os dias: a competência é a do ciclo atual (dia 11 a dia 10 do mês seguinte).
 
   const beneficio = String(req.body.beneficio || '');
   const b = R.BENEFICIOS[beneficio];
@@ -413,15 +421,15 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
   const descricao = String(req.body.descricao || '').trim().slice(0, 500);
   if (descricao) detalhes.descricao = descricao;
 
-  const competencia = R.competenciaDe(hoje);
+  const competencia = R.competenciaDe(hoje, config.dia_fim);
   // Verificação do limite e gravação sem nenhuma espera entre elas (node:sqlite é síncrono),
   // então duas solicitações simultâneas não passam juntas do limite.
   const s = saldo(colab, beneficio, dep ? dep.id : null, competencia, dataDoc, config);
   if (s.bloqueio) return falhar(s.bloqueio);
   if (valor > s.disponivel) {
-    const onde = b.escopo === 'familia_mes' ? 'para o grupo familiar neste mês'
-      : b.escopo === 'dependente_mes' ? 'para este dependente neste mês'
-        : b.escopo === 'dependente_janela' ? `para este dependente em ${mesAno(competencia)}`
+    const onde = b.escopo === 'familia_mes' ? 'para o grupo familiar nesta competência'
+      : b.escopo === 'dependente_mes' ? 'para este dependente nesta competência'
+        : b.escopo === 'dependente_janela' ? `para este dependente na competência ${mesAno(competencia)}`
         : `para este beneficiário nos últimos ${s.janela.meses} meses`;
     return falhar(s.disponivel > 0
       ? `Valor acima do saldo disponível ${onde}: ${R.formatarReais(s.disponivel)} (limite ${R.formatarReais(s.limite)}). Ajuste o valor solicitado.`
@@ -501,7 +509,7 @@ app.get('/api/admin/sessao', exigirRh, (req, res) => res.json({ ...req.rh, email
 app.get('/api/admin/painel', exigirRh, (req, res) => {
   const config = configuracao();
   const hoje = R.hojeISO();
-  const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : R.competenciaDe(hoje);
+  const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : R.competenciaDe(hoje, config.dia_fim);
   const tot = db.prepare(`
     SELECT COUNT(*) AS total, SUM(status = 'analise') AS analise, SUM(status = 'aprovado') AS aprovadas, SUM(status = 'reprovado') AS reprovadas,
       COALESCE(SUM(valor_solicitado), 0) AS valor_solicitado,
@@ -534,7 +542,9 @@ app.get('/api/admin/painel', exigirRh, (req, res) => {
 app.get('/api/admin/filtros', exigirRh, (_req, res) => {
   const col = (sql) => db.prepare(sql).all().map(r => r.v).filter(Boolean);
   res.json({
-    competencias: [...new Set([R.competenciaDe(R.hojeISO()), ...col('SELECT DISTINCT competencia AS v FROM solicitacoes ORDER BY v DESC')])].sort().reverse(),
+    competencia_atual: competenciaAtual(),
+    competencia_folha: competenciaDaFolha(),
+    competencias: [...new Set([competenciaAtual(), competenciaDaFolha(), ...col('SELECT DISTINCT competencia AS v FROM solicitacoes ORDER BY v DESC')])].sort().reverse(),
     unidades: col("SELECT DISTINCT unidade AS v FROM colaboradores WHERE unidade <> '' UNION SELECT DISTINCT unidade FROM solicitacoes WHERE unidade <> '' ORDER BY v"),
     beneficios: R.CODIGOS.map(c => ({ codigo: c, nome: R.BENEFICIOS[c].nome })),
   });
@@ -955,14 +965,14 @@ function linhasDaFolha(competencia) {
 }
 
 app.get('/api/admin/folha', exigirRh, (req, res) => {
-  const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : R.competenciaDe(R.hojeISO());
+  const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : competenciaDaFolha();
   const linhas = linhasDaFolha(competencia);
   const pendentes = db.prepare("SELECT COUNT(*) AS n FROM solicitacoes WHERE competencia = ? AND status = 'analise'").get(competencia).n;
   res.json({ competencia, linhas, pendentes, total: linhas.reduce((a, l) => a + l.valor_aprovado, 0) });
 });
 
 app.get('/api/admin/folha.csv', exigirRh, (req, res) => {
-  const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : R.competenciaDe(R.hojeISO());
+  const competencia = /^\d{4}-\d{2}$/.test(req.query.competencia || '') ? req.query.competencia : competenciaDaFolha();
   const cab = ['Matrícula', 'Nome do colaborador', 'CPF', 'Unidade/lotação', 'Benefício', 'Beneficiário', 'Parentesco',
     'Competência', 'Valor aprovado', 'Verba de folha', 'Data da aprovação', 'Aprovado por', 'Protocolo', 'Status'];
   const campo = (v) => {
@@ -997,15 +1007,12 @@ app.put('/api/admin/configuracoes', exigirAdmin, (req, res) => {
     return Number.isInteger(n) && n >= min && n <= max ? n : padrao;
   };
   const nova = {
-    dia_inicio: inteiro(e.dia_inicio, 1, 28, atual.dia_inicio),
-    dia_fim: inteiro(e.dia_fim, 1, 31, atual.dia_fim),
+    dia_fim: inteiro(e.dia_fim, 1, 27, atual.dia_fim),
     prazo_documento_dias: inteiro(e.prazo_documento_dias, 1, 365, atual.prazo_documento_dias),
-    excecao_ate: e.excecao_ate === undefined ? atual.excecao_ate : (R.normalizarData(e.excecao_ate) || ''),
     portal_suspenso: e.portal_suspenso === undefined ? atual.portal_suspenso : Boolean(e.portal_suspenso),
     mensagem_suspensao: String(e.mensagem_suspensao ?? atual.mensagem_suspensao ?? '').trim().slice(0, 300),
     beneficios: {},
   };
-  if (nova.dia_fim < nova.dia_inicio) return res.status(400).json({ erro: 'O dia de fechamento deve ser igual ou posterior ao dia de abertura.' });
   for (const c of R.CODIGOS) {
     const b = (e.beneficios || {})[c] || {};
     const a = atual.beneficios[c];
@@ -1021,7 +1028,7 @@ app.put('/api/admin/configuracoes', exigirAdmin, (req, res) => {
   }
   db.prepare("INSERT INTO configuracoes (chave, valor) VALUES ('portal', ?) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor").run(JSON.stringify(nova));
   if (nova.portal_suspenso !== atual.portal_suspenso) auditar(req, nova.portal_suspenso ? 'Suspendeu o portal para os colaboradores' : 'Reativou o portal para os colaboradores', nova.mensagem_suspensao || null);
-  if (e.dia_inicio !== undefined || e.beneficios !== undefined) auditar(req, 'Alterou configurações', `Envio: dia ${nova.dia_inicio} a ${nova.dia_fim} · prazo ${nova.prazo_documento_dias} dias${nova.excecao_ate ? ` · exceção até ${nova.excecao_ate}` : ''}`);
+  if (e.dia_fim !== undefined || e.beneficios !== undefined) auditar(req, 'Alterou configurações', `Ciclo: dia ${nova.dia_fim + 1} a ${nova.dia_fim} do mês seguinte · prazo ${nova.prazo_documento_dias} dias`);
   res.json({ ok: true, config: nova });
 });
 

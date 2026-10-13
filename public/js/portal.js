@@ -63,15 +63,14 @@ function renderLateral() {
 
 function anelDias(p) {
   const r = 62, comp = 2 * Math.PI * r;
-  const janela = p.dia_fim - p.dia_inicio + 1;
-  const valor = p.aberto ? Math.min(100, Math.round((p.dias_restantes / Math.max(janela, p.dias_restantes)) * 100)) : 0;
+  const valor = Math.min(100, Math.round((p.dias_restantes / Math.max(p.dias_ciclo, p.dias_restantes)) * 100));
   return `
-    <div class="anel" role="img" aria-label="${p.aberto ? `${p.dias_restantes} dias restantes para enviar` : 'Portal fechado para novas solicitações'}">
+    <div class="anel" role="img" aria-label="${p.dias_restantes} dias para o fechamento da competência">
       <svg viewBox="0 0 150 150">
         <circle class="trilho" cx="75" cy="75" r="${r}"/>
         <circle class="carga" cx="75" cy="75" r="${r}" stroke-dasharray="${comp}" stroke-dashoffset="${comp}" data-alvo="${comp * (1 - valor / 100)}"/>
       </svg>
-      <div class="anel-texto">${p.aberto ? `<strong>${p.dias_restantes}</strong><span>${p.dias_restantes === 1 ? 'DIA RESTANTE' : 'DIAS RESTANTES'}</span>` : '<strong>🔒</strong><span>FECHADO</span>'}</div>
+      <div class="anel-texto"><strong>${p.dias_restantes}</strong><span>${p.dias_restantes === 1 ? 'DIA PARA O FECHAMENTO' : 'DIAS PARA O FECHAMENTO'}</span></div>
     </div>`;
 }
 
@@ -82,18 +81,13 @@ const ONDA_CARTAO = `
   </svg>`;
 
 function textoPeriodo(p) {
-  const dois = (n) => String(n).padStart(2, '0');
-  if (p.aberto) {
-    return p.por_excecao
-      ? `O portal está aberto excepcionalmente até ${dataBR(p.encerra_em)}.`
-      : `Solicitações abertas até ${dataBR(p.encerra_em)} (competência ${competenciaBR(p.competencia)}).`;
-  }
-  return `O envio de novas solicitações acontece do dia ${dois(p.dia_inicio)} ao dia ${dois(p.dia_fim)} de cada mês. Próxima abertura: ${dataBR(p.proxima_abertura)}. Você pode consultar suas solicitações normalmente.`;
+  return `Competência ${competenciaBR(p.competencia)}: envios de ${dataBR(p.inicio_ciclo)} a ${dataBR(p.encerra_em)}${p.dias_restantes === 1 ? ' (fecha hoje)' : ''}. A partir de ${dataBR(somarDiaISO(p.encerra_em))}, entram na competência ${competenciaBR(p.proxima_competencia)}.`;
 }
+const somarDiaISO = (iso) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86400e3).toISOString().slice(0, 10);
 
 function faixaPeriodo() {
   const p = estado.me.periodo;
-  return `<div class="faixa-periodo ${p.aberto ? '' : 'fechado'}"><span class="ponto"></span><span><strong>${p.aberto ? 'Portal aberto' : 'Portal fechado para novas solicitações'}.</strong> ${esc(textoPeriodo(p))}</span></div>`;
+  return `<div class="faixa-periodo"><span class="ponto"></span><span><strong>Envios abertos.</strong> ${esc(textoPeriodo(p))}</span></div>`;
 }
 
 function cartaoBeneficio(b) {
@@ -104,7 +98,7 @@ function cartaoBeneficio(b) {
       <span class="saldo">
         <span class="saldo-topo"><span>Saldo do grupo familiar</span><strong>${reais(s.disponivel)}</strong></span>
         <span class="barra-prog ${s.disponivel ? '' : 'saldo-zero'}"><i style="width:${pctUso(s.limite - s.disponivel, s.limite)}%"></i></span>
-        <span>${reais(s.limite - s.disponivel)} utilizados de ${reais(s.limite)} este mês</span>
+        <span>${reais(s.limite - s.disponivel)} utilizados de ${reais(s.limite)} nesta competência</span>
       </span>`;
   } else {
     saldoHtml = `<span class="beneficiarios-mini">${b.beneficiarios.map(p => `
@@ -117,7 +111,7 @@ function cartaoBeneficio(b) {
       <span class="tema-topo"><span class="ic">${b.icone}</span><strong>${esc(b.nome)}</strong></span>
       <span class="tema-meta">Limite de ${reais(b.limite)} ${textoEscopo(b)}</span>
       ${saldoHtml}
-      <span class="tema-acao"><span class="etiqueta ${s.disponivel ? 'ok' : 'neutra'}">${s.disponivel ? 'Saldo disponível' : b.janela && !b.janela.aberta ? `Abre em ${competenciaBR(b.janela.proxima)}` : 'Limite atingido'}</span><span class="tema-cta">Ver detalhes →</span></span>
+      <span class="tema-acao"><span class="etiqueta ${s.disponivel ? 'ok' : 'neutra'}">${s.disponivel ? 'Saldo disponível' : b.janela && !b.janela.aberta ? `Abre em ${dataBR(b.janela.proxima_inicio)}` : 'Limite atingido'}</span><span class="tema-cta">Ver detalhes →</span></span>
     </button>`;
 }
 
@@ -199,7 +193,7 @@ function renderBeneficio(codigo) {
     <div class="regras-grade">
       <div class="cartao"><h3>👥 Quem pode usar</h3><p>${esc(b.elegiveis)}</p></div>
       <div class="cartao"><h3>📎 Documentos obrigatórios</h3><ul>${b.documentos.map(d => `<li>${esc(d.nome)}</li>`).join('')}</ul></div>
-      <div class="cartao"><h3>📅 Prazos</h3><p>Envio do dia ${String(p.dia_inicio).padStart(2, '0')} ao dia ${String(p.dia_fim).padStart(2, '0')} de cada mês, com documentos emitidos há até ${estado.me.prazo_documento_dias} dias.</p></div>
+      <div class="cartao"><h3>📅 Prazos</h3><p>Envio em qualquer dia. Cada competência vai do dia ${String(p.dia_inicio).padStart(2, '0')} ao dia ${String(p.dia_fim).padStart(2, '0')} do mês seguinte, com documentos emitidos há até ${estado.me.prazo_documento_dias} dias.</p></div>
       <div class="cartao"><h3>ℹ️ Atenção</h3><p>${esc(b.observacao)}</p></div>
     </div>
     <h2 class="titulo-secao">Beneficiários elegíveis <small>e saldo de cada um</small></h2>
@@ -212,7 +206,7 @@ function renderBeneficio(codigo) {
           <td>${p.aberto && x.disponivel ? `<a class="btn btn-laranja btn-sm" href="#/nova/${b.codigo}/${x.id}">Solicitar</a>` : ''}</td></tr>`).join('')}
       </table></div>
       ${b.escopo === 'familia_mes' ? '<p class="q-dica" style="margin:.8rem 0 0">O limite é compartilhado: o valor utilizado por qualquer pessoa do grupo familiar reduz o saldo de todos no mês.</p>' : ''}
-      ${b.escopo === 'dependente_janela' ? `<p class="q-dica" style="margin:.8rem 0 0">Um reembolso por dependente em cada mês de solicitação (${esc(b.janela.nomes.join(' e '))}). O valor não utilizado não acumula para o mês seguinte.${b.janela.aberta ? '' : ` Próxima janela: <strong>${esc(b.janela.proxima_nome)}</strong>.`}</p>` : ''}
+      ${b.escopo === 'dependente_janela' ? `<p class="q-dica" style="margin:.8rem 0 0">Um reembolso por dependente em cada competência de solicitação (${esc(b.janela.nomes.join(' e '))}). O valor não utilizado não acumula para a seguinte.${b.janela.aberta ? '' : ` Próxima: competência <strong>${esc(b.janela.proxima_nome)}</strong>, com envios a partir de <strong>${dataBR(b.janela.proxima_inicio)}</strong>.`}</p>` : ''}
       ${b.beneficiarios.some(x => x.bloqueio) && b.janela?.aberta ? `<ul class="q-dica" style="margin:.5rem 0 0">${b.beneficiarios.filter(x => x.bloqueio).map(x => `<li>${esc(x.nome.split(' ')[0])}: ${esc(x.bloqueio)}</li>`).join('')}</ul>` : ''}
     </div>
     <h2 class="titulo-secao">Histórico deste benefício</h2>
@@ -229,7 +223,7 @@ function renderBeneficio(codigo) {
 /** Motivo curto para o beneficiário sem saldo (material escolar: fora da janela ou já solicitado nela). */
 function motivoSemSaldo(b, x) {
   if (!x.bloqueio || !b.janela) return 'limite atingido';
-  return b.janela.aberta ? `já solicitado · próximo em ${b.janela.proxima_nome}` : `disponível em ${b.janela.proxima_nome}`;
+  return b.janela.aberta ? `já solicitado · próximo a partir de ${dataBR(b.janela.proxima_inicio)}` : `disponível a partir de ${dataBR(b.janela.proxima_inicio)}`;
 }
 
 function opcaoBeneficiario(b, x, marcado) {
@@ -366,7 +360,7 @@ function renderNova(codigoInicial, beneficiarioInicial) {
     const escolhido = preBeneficiario !== undefined ? Number(preBeneficiario) : (disponiveis.length === 1 ? disponiveis[0].id : null);
     lista.innerHTML = b.beneficiarios.map(x => opcaoBeneficiario(b, x, x.id === escolhido && x.disponivel)).join('');
     document.getElementById('dica-beneficiario').textContent = b.escopo === 'familia_mes'
-      ? `Limite de ${reais(b.limite)} por mês compartilhado pelo grupo familiar · saldo ${reais(b.disponivel_familia)}.`
+      ? `Limite de ${reais(b.limite)} por competência compartilhado pelo grupo familiar · saldo ${reais(b.disponivel_familia)}.`
       : `Limite de ${reais(b.limite)} ${textoEscopo(b)}. Aparecem apenas os beneficiários elegíveis.`;
     document.getElementById('campo-nivel').hidden = b.codigo !== 'educacional';
     document.getElementById('anexos').innerHTML = [...b.documentos.map(d => ({ ...d, obrigatorio: true })), { tipo: 'outro', nome: 'Outros documentos', obrigatorio: false }].map(d => `

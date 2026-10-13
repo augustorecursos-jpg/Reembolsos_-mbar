@@ -203,13 +203,20 @@ document.getElementById('tabela-usuarios').addEventListener('change', async (e) 
 // ---------- Período, limites e verbas ----------
 const emReais = (c) => (c == null ? '' : (c / 100).toFixed(2).replace('.', ','));
 
+/** Explica o ciclo de envio a partir do dia de fechamento (envios todos os dias). */
+function dicaCiclo() {
+  const fim = Number(document.getElementById('form-config').dia_fim.value) || 10;
+  const dois = (n) => String(n).padStart(2, '0');
+  document.getElementById('dica-ciclo').innerHTML = `O portal recebe envios <strong>todos os dias</strong>. Cada competência vai do dia <strong>${dois(fim + 1)}</strong> de um mês ao dia <strong>${dois(fim)}</strong> do mês seguinte (ex.: ${dois(fim + 1)}/09 a ${dois(fim)}/10 = competência outubro). A folha da competência é extraída no dia seguinte ao fechamento.`;
+}
+document.getElementById('form-config').dia_fim.addEventListener('input', dicaCiclo);
+
 async function carregarRegras() {
   const { config, beneficios } = await api('/api/admin/configuracoes');
   const f = document.getElementById('form-config');
-  f.dia_inicio.value = config.dia_inicio;
   f.dia_fim.value = config.dia_fim;
   f.prazo_documento_dias.value = config.prazo_documento_dias;
-  f.excecao_ate.value = config.excecao_ate || '';
+  dicaCiclo();
   const campo = (cod, nome, valor, extra = '') => `<input class="campo" style="padding:.45rem .6rem;min-width:110px" data-b="${cod}" data-campo="${nome}" value="${esc(valor)}" ${extra}>`;
   document.getElementById('tabela-config-beneficios').innerHTML = `
     <tr><th>Ativo</th><th>Benefício</th><th>Limite</th><th>Verba de folha</th></tr>
@@ -234,8 +241,7 @@ document.getElementById('form-config').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
   const corpo = {
-    dia_inicio: Number(f.dia_inicio.value), dia_fim: Number(f.dia_fim.value), prazo_documento_dias: Number(f.prazo_documento_dias.value),
-    excecao_ate: f.excecao_ate.value, beneficios: {},
+    dia_fim: Number(f.dia_fim.value), prazo_documento_dias: Number(f.prazo_documento_dias.value), beneficios: {},
   };
   f.querySelectorAll('[data-b]').forEach(el => {
     corpo.beneficios[el.dataset.b] = corpo.beneficios[el.dataset.b] || {};

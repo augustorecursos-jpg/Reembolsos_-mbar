@@ -83,7 +83,7 @@ Para atualizar depois de mudanças nas telas (requer Playwright: `npm i -D playw
    e histórico do beneficiário; **aprova** (total ou parcial) ou **reprova** (justificativa obrigatória, exibida ao colaborador).
    Decisões podem ser reabertas com motivo. Tudo fica na linha do tempo com data, hora e responsável.
 5. **Colaborador acompanha** o status (Em análise / Aprovado / Reprovado) e recebe e-mail no envio e na decisão (se SMTP configurado).
-6. **Dia 11 – Folha de pagamento**: o RH extrai as aprovadas da competência em **CSV** (`;`, vírgula decimal, pronto para o
+6. **Dia 11 – Folha de pagamento**: o RH extrai as aprovadas da competência que fechou no dia 10 (a tela da folha já abre nela) em **CSV** (`;`, vírgula decimal, pronto para o
    Excel/importação) ou **Excel**, com matrícula, nome, CPF, unidade, benefício, beneficiário, competência,
    valor aprovado, verba de folha, data da aprovação e status. O sistema avisa se ainda houver solicitações em análise.
 
@@ -91,14 +91,14 @@ Para atualizar depois de mudanças nas telas (requer Playwright: `npm i -D playw
 
 | Regra | Como funciona |
 |---|---|
-| Período | Novas solicitações do dia **01 ao 10**; a partir do dia 11 o portal fica só para consulta. Dias configuráveis e “abertura excepcional até” uma data. |
+| Período | Envios **todos os dias**, em ciclos do dia **11** de um mês ao dia **10** do mês seguinte. Cada ciclo é uma competência: de 11/09 a 10/10 = competência outubro (fecha no dia 10 e vai para a folha no dia 11). O dia de fechamento é configurável na Administração. Limites mensais valem por competência. |
 | Prazo do documento | Até **60 dias** da emissão; data futura bloqueada. Configurável. |
 | Anexos | Obrigatórios por benefício (PDF/JPG/PNG, até 10 MB cada); sem eles o envio não conclui. |
 | Medicamento | Até **R$ 800,00/mês para o grupo familiar** (limite compartilhado). Titular, cônjuge, filhos, netos/dependentes com tutela; **pai e mãe só para sucedidos**. Declaração de que não são itens de estética, higiene ou suplementos. |
 | Educacional | Por dependente/mês: **R$ 733,63** (sucedido) / **R$ 600,00** (não sucedido). Filhos, enteados e netos com tutela, **7 a 17 anos resguardado o ano letivo** (quem faz 18 no ano segue elegível até dezembro). Nível de ensino obrigatório. |
 | Creche/Babá | Por dependente/mês: **R$ 1.103,17** (sucedido) / **R$ 800,00** (não sucedido). Filhos, enteados e netos com tutela, **de 6 meses a 6 anos**. |
 | Óculos | **R$ 1.500,00 por beneficiário a cada 18 meses** (pela data do documento). Somente titular e cônjuge. |
-| Material Escolar/Uniforme | Por dependente: **R$ 1.467,26** (sucedido) / **R$ 1.200,00** (não sucedido), **somente em fevereiro e em julho**. Filhos de **7 a 17 anos**. Um reembolso por dependente em cada mês (em análise ou aprovado bloqueia novo envio; reprovado libera); o saldo não usado **não acumula** para o mês seguinte. Fora de fevereiro/julho o portal mostra a próxima janela. Nota fiscal obrigatória. |
+| Material Escolar/Uniforme | Por dependente: **R$ 1.467,26** (sucedido) / **R$ 1.200,00** (não sucedido), **somente nas competências de fevereiro (envios de 11/01 a 10/02) e julho (11/06 a 10/07)**. Filhos de **7 a 17 anos**. Um reembolso por dependente em cada mês (em análise ou aprovado bloqueia novo envio; reprovado libera); o saldo não usado **não acumula** para o mês seguinte. Fora de fevereiro/julho o portal mostra a próxima janela. Nota fiscal obrigatória. |
 | Saldo | Aprovadas contam pelo valor aprovado e **em análise pelo valor solicitado** (evita enviar acima do limite enquanto a análise não sai); reprovadas liberam o saldo. O RH não consegue aprovar acima do saldo. |
 | Sucedido | Coluna `SUCEDIDO` (S/N) da base; se vazia, sucedido = admitido até 31/12/2011. |
 | Elegibilidade da base | Colunas `MEDICAMENTO`, `EDUCACIONAL`, `CRECHE`, `OCULOS`, `MATERIAL` em colaboradores e dependentes: **S** libera (ex.: exceções aprovadas pelo RH), **N** bloqueia, **vazio** aplica a regra do benefício. |

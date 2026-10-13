@@ -79,7 +79,7 @@ if (!db.prepare('SELECT 1 FROM solicitacoes LIMIT 1').get()) {
   for (const e of exemplos) {
     const c = colaboradores.find(x => x.cpf === e.cpf);
     const d = e.dep ? dependentes.find(x => x.titular === e.cpf && x.nome === e.dep) : null;
-    const enviada = `${e.comp === competencia ? hoje.slice(0, 8) + '02' : e.comp + '-05'} 13:00:00`;
+    const enviada = `${e.comp === competencia ? hoje : e.comp + '-05'} 09:00:00`;
     const analisada = e.status === 'analise' ? null : `${enviada.slice(0, 10)} 17:30:00`;
     const id = Number(ins.run(c.cpf, c.matricula, c.nome, c.unidade, c.sucedido, e.beneficio, d ? depId(e.cpf, d.nome) : null,
       d ? d.nome : c.nome, d ? d.parentesco : 'titular', e.comp, e.data, e.valor, e.aprovado ?? null,

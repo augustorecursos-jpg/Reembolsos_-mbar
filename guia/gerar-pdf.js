@@ -109,9 +109,9 @@ const p1 = folha('Boas-vindas!', 'ANTES DE COMEÇAR', `
     <div class="caixa caixa-marinho">
       <h3>📅 Calendário do mês</h3>
       <ul class="calend">
-        <li><b>01 a 10</b><span>Envio das solicitações. Fora desse período o portal fica disponível só para consulta.</span></li>
+        <li><b>Todo dia</b><span>Envio aberto sempre. Cada competência vai do dia 11 de um mês ao dia 10 do mês seguinte.</span></li>
         <li><b>60 dias</b><span>Prazo máximo entre a emissão do documento e o envio da solicitação.</span></li>
-        <li><b>Dia 11</b><span>As solicitações aprovadas seguem para a folha de pagamento do mês.</span></li>
+        <li><b>Dia 10</b><span>Fechamento da competência. No dia 11, as aprovadas seguem para a folha de pagamento do mês.</span></li>
       </ul>
     </div>
   </div>
@@ -143,8 +143,8 @@ const p3 = folha('Conheça o seu painel', 'PASSO 2', `
   <p class="lead">Depois de entrar, você vê o resumo dos seus reembolsos. O menu à esquerda leva a todas as áreas do portal.</p>
   ${tela('03-painel', [[0, 1, { dx: -1, dy: -1.5 }], [1, 2, { dx: 0, dy: -1 }], [2, 3, { dx: -1, dy: -3 }], [3, 4, { dx: -1, dy: -2 }], [4, 5, { dx: -1, dy: -1 }], [5, 6, { dx: -1, dy: -1.5 }]])}
   ${itens([
-    [1, 'Nova solicitação', 'Abre o formulário para pedir um reembolso (disponível do dia 01 ao 10).'],
-    [2, 'Dias restantes', 'Quantos dias faltam para o fim do período de envio do mês.'],
+    [1, 'Nova solicitação', 'Abre o formulário para pedir um reembolso (disponível todos os dias).'],
+    [2, 'Dias para o fechamento', 'Quantos dias faltam para fechar a competência atual (dia 10).'],
     [3, 'Seus números', 'Solicitações em análise, aprovadas, valor reembolsado no ano e reprovadas.'],
     [4, 'Meus benefícios', 'Só aparecem os benefícios aos quais você tem direito, com o saldo disponível de cada um.'],
     [5, 'Últimas solicitações', 'Status das suas solicitações mais recentes. Clique em uma delas para ver os detalhes.'],
@@ -157,7 +157,7 @@ const linhasBeneficios = [
   ['educacional', `até ${reais(73363)} (sucedidos) ou ${reais(60000)} por dependente/mês`, 'Filhos, enteados e netos com tutela, de 7 a 17 anos, no ensino fundamental, médio ou técnico.', 'Boleto ou recibo + comprovante de pagamento'],
   ['creche', `até ${reais(110317)} (sucedidos) ou ${reais(80000)} por dependente/mês`, 'Filhos, enteados e netos com tutela, de 6 meses a 6 anos.', 'Boleto ou recibo + comprovante de pagamento'],
   ['oculos', `até ${reais(150000)} por pessoa a cada 18 meses`, 'Titular e cônjuge.', 'Receita médica + nota fiscal'],
-  ['material', `até ${reais(146726)} (sucedidos) ou ${reais(120000)} por dependente, em fevereiro e em julho`, 'Filhos de 7 a 17 anos. Um reembolso por filho em cada mês; o saldo não acumula.', 'Nota fiscal'],
+  ['material', `até ${reais(146726)} (sucedidos) ou ${reais(120000)} por dependente, em fev. e jul.`, 'Filhos de 7 a 17 anos. Um por filho em cada competência (envios de 11/01 a 10/02 e de 11/06 a 10/07).', 'Nota fiscal'],
 ];
 const p4 = folha('Seus benefícios e limites', 'PASSO 3', `
   <p class="lead">Clique em um benefício no menu para ver as regras, os beneficiários elegíveis e o saldo de cada um.</p>
@@ -241,7 +241,7 @@ const p8 = folha('Pelo celular', 'NO SMARTPHONE', `
 
 const faq = [
   ['Preciso de senha?', 'Não. O acesso é feito somente com o CPF, para colaboradores da base de elegibilidade do RH.'],
-  ['Perdi o prazo do dia 10. E agora?', 'O envio reabre no dia 01 do mês seguinte. Lembre que o documento precisa ter no máximo 60 dias na data do envio.'],
+  ['Enviei depois do dia 10. E agora?', 'O portal recebe envios todos os dias: a partir do dia 11, o envio entra na competência do mês seguinte. O documento precisa ter até 60 dias.'],
   ['Não encontro um dependente ou um benefício.', 'O portal mostra apenas quem é elegível, conforme as regras e a base do RH. Se houver divergência, procure o RH.'],
   ['O valor passou do saldo. Posso enviar?', 'Não. Ajuste o valor solicitado para até o saldo disponível mostrado no formulário.'],
   ['Posso enviar foto do documento?', 'Sim, em JPG ou PNG, desde que esteja legível e inteiro. PDF também é aceito. Até 10 MB por arquivo.'],
@@ -253,7 +253,7 @@ const p9 = folha('Dúvidas frequentes', 'AJUDA', `
   <div class="checklist">
     <h3>Antes de enviar, confira</h3>
     <ul class="checks">
-      <li>Estamos entre os dias <strong>01 e 10</strong> do mês.</li>
+      <li>Para entrar na folha deste mês, envie até o dia <strong>10</strong>.</li>
       <li>O documento tem <strong>até 60 dias</strong> da emissão.</li>
       <li>Os documentos obrigatórios estão <strong>legíveis e completos</strong>.</li>
       <li>O valor está dentro do <strong>saldo disponível</strong>.</li>

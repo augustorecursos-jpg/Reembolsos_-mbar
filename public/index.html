@@ -104,14 +104,16 @@
           </div>
           <div class="cal-mes" id="cal-mes"></div>
           <ul class="cal-legenda">
-            <li><i class="janela"></i>Período de envio</li>
+            <li><i class="janela"></i><span id="leg-atual">Competência do mês</span></li>
+            <li><i class="proxima"></i><span id="leg-proxima">Competência seguinte</span></li>
+            <li><i class="fechamento"></i>Fechamento</li>
             <li><i class="hoje"></i>Hoje</li>
           </ul>
         </aside>
         <ul class="prazos-lista">
-          <li><b>📅</b><div><strong>Do dia <span data-dia-inicio>01</span> ao dia <span data-dia-fim>10</span></strong><p>Período para enviar novas solicitações. Fora dele, o portal fica disponível para consulta.</p></div></li>
+          <li><b>📅</b><div><strong>Envios todos os dias</strong><p>Cada competência vai do dia <span data-dia-inicio>11</span> de um mês ao dia <span data-dia-fim>10</span> do mês seguinte. O que for enviado depois do fechamento entra na competência seguinte.</p></div></li>
           <li><b>🧾</b><div><strong>Documentos com até <span data-prazo>60</span> dias</strong><p>Contados da data de emissão da nota fiscal ou do comprovante de pagamento.</p></div></li>
-          <li><b>💰</b><div><strong>Pagamento na folha</strong><p>Depois do fechamento, as solicitações aprovadas seguem para a folha de pagamento do mês.</p></div></li>
+          <li><b>💰</b><div><strong>Pagamento na folha</strong><p>No dia seguinte ao fechamento, as solicitações aprovadas da competência seguem para a folha de pagamento do mês.</p></div></li>
         </ul>
       </div>
     </section>
@@ -137,10 +139,10 @@
       <div class="faq">
         <details open><summary>Como faço para usar o portal pela primeira vez?</summary><p>Baixe o <a href="guia-de-acesso.pdf" target="_blank" rel="noopener"><strong>Guia de acesso (PDF)</strong></a>: ele mostra, com as telas do portal, como entrar, conferir seus saldos, enviar uma solicitação e acompanhar a análise do RH.</p></details>
         <details><summary>Quem pode acessar?</summary><p>Colaboradores da base de elegibilidade atualizada mensalmente pelo RH. Se o acesso for negado, procure o time de RH para verificar seu cadastro.</p></details>
-        <details><summary>Quando posso enviar uma solicitação?</summary><p>Do dia <span data-dia-inicio>01</span> ao dia <span data-dia-fim>10</span> de cada mês. Fora desse período o portal fica disponível para consulta.</p></details>
+        <details><summary>Quando posso enviar uma solicitação?</summary><p>Em qualquer dia. O portal trabalha em ciclos do dia <span data-dia-inicio>11</span> de um mês ao dia <span data-dia-fim>10</span> do mês seguinte: o que for enviado até o dia <span data-dia-fim>10</span> entra na competência daquele mês; a partir do dia <span data-dia-inicio>11</span>, na competência do mês seguinte.</p></details>
         <details><summary>Não encontro um dependente ou um benefício. O que fazer?</summary><p>O portal mostra apenas os benefícios e dependentes elegíveis, conforme as regras de cada benefício e a base do RH. Se houver divergência, procure o RH.</p></details>
         <details><summary>Quais documentos preciso anexar?</summary><p>Medicamento e óculos: receita médica e nota fiscal. Educacional e creche/babá: boleto ou recibo e comprovante de pagamento. Material escolar/uniforme: nota fiscal. Arquivos em PDF, JPG ou PNG de até 10 MB.</p></details>
-        <details><summary>Como funciona o limite?</summary><p>Medicamento: limite mensal compartilhado pelo grupo familiar. Educacional e creche/babá: limite mensal por dependente. Óculos: limite por beneficiário a cada 18 meses. Material escolar/uniforme: filhos de 7 a 17 anos, um reembolso por filho em fevereiro e outro em julho; o valor não usado em um mês não acumula para o outro. O saldo aparece antes do envio.</p></details>
+        <details><summary>Como funciona o limite?</summary><p>Medicamento: limite por competência compartilhado pelo grupo familiar. Educacional e creche/babá: limite por competência para cada dependente. Óculos: limite por beneficiário a cada 18 meses. Material escolar/uniforme: filhos de 7 a 17 anos, um reembolso por filho na competência de fevereiro (envios de 11/01 a 10/02) e outro na de julho (11/06 a 10/07); o valor não usado em uma não acumula para a outra. O saldo aparece antes do envio.</p></details>
         <details><summary>Minha solicitação foi reprovada. Onde vejo o motivo?</summary><p>Em “Minhas solicitações”, junto com o status, aparece a justificativa registrada pelo RH.</p></details>
       </div>
     </section>

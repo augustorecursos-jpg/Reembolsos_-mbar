@@ -75,11 +75,8 @@ function iniciarArea({ exigeAdmin, abas, abaPadrao, aoEntrar }) {
 }
 
 function faixaPeriodo(p) {
-  const dois = (n) => String(n).padStart(2, '0');
-  const texto = p.aberto
-    ? `Recebendo solicitações até ${dataBR(p.encerra_em)}${p.por_excecao ? ' (abertura excepcional)' : ''}.`
-    : `Fechado para novas solicitações (janela: dia ${dois(p.dia_inicio)} ao dia ${dois(p.dia_fim)}). Próxima abertura: ${dataBR(p.proxima_abertura)}.`;
-  return `<div class="faixa-periodo ${p.aberto ? '' : 'fechado'}"><span class="ponto"></span><span><strong>Portal ${p.aberto ? 'aberto' : 'fechado'}.</strong> ${esc(texto)}</span></div>`;
+  const texto = `Competência ${competenciaBR(p.competencia)}: envios de ${dataBR(p.inicio_ciclo)} a ${dataBR(p.encerra_em)} (fecha ${p.dias_restantes === 1 ? 'hoje' : `em ${p.dias_restantes} dias`}).`;
+  return `<div class="faixa-periodo"><span class="ponto"></span><span><strong>Portal aberto.</strong> ${esc(texto)}</span></div>`;
 }
 
 function baixarExcel(linhas, aba, arquivo) {

@@ -167,11 +167,10 @@
         <form class="cartao" id="form-config">
           <h3>📅 Período e prazos</h3>
           <div class="grade-campos" style="margin-top:.8rem">
-            <label class="rotulo">Abertura (dia do mês)<input class="campo" type="number" min="1" max="28" name="dia_inicio"></label>
-            <label class="rotulo">Fechamento (dia do mês)<input class="campo" type="number" min="1" max="31" name="dia_fim"></label>
+            <label class="rotulo">Fechamento da competência (dia do mês)<input class="campo" type="number" min="1" max="27" name="dia_fim"></label>
             <label class="rotulo">Prazo do documento (dias)<input class="campo" type="number" min="1" max="365" name="prazo_documento_dias"></label>
-            <label class="rotulo">Abertura excepcional até <small>(opcional)</small><input class="campo" type="date" name="excecao_ate"></label>
           </div>
+          <p class="q-dica" id="dica-ciclo" style="margin:.6rem 0 0"></p>
           <h3 style="margin-top:1.4rem">💳 Benefícios, limites e verbas de folha</h3>
           <div class="tabela-wrap"><table class="tabela" id="tabela-config-beneficios"></table></div>
           <div class="linha-form"><button class="btn btn-laranja" type="submit" style="margin-left:auto">Salvar configurações</button></div>

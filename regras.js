@@ -54,7 +54,7 @@ const BENEFICIOS = {
     faixa: 'educacional',
     documentos: ['boleto', 'comprovante'],
     elegiveis: 'Filhos, enteados e netos com tutela, de 7 a 17 anos (resguardado o ano letivo), cursando ensino fundamental, médio ou médio técnico.',
-    observacao: 'Limite mensal individual por dependente.',
+    observacao: 'Limite individual por dependente em cada competência (ciclo do dia 11 ao dia 10 do mês seguinte).',
     verba: '',
   },
   creche: {
@@ -69,7 +69,7 @@ const BENEFICIOS = {
     faixa: 'creche',
     documentos: ['boleto', 'comprovante'],
     elegiveis: 'Filhos, enteados e netos com tutela, a partir de 6 meses até 6 anos.',
-    observacao: 'Limite mensal individual por dependente.',
+    observacao: 'Limite individual por dependente em cada competência (ciclo do dia 11 ao dia 10 do mês seguinte).',
     verba: '',
   },
   oculos: {
@@ -99,7 +99,7 @@ const BENEFICIOS = {
     faixa: 'educacional',
     documentos: ['nota_fiscal'],
     elegiveis: 'Filhos de 7 a 17 anos (resguardado o ano letivo).',
-    observacao: 'Solicitado somente em fevereiro e em julho: um reembolso por dependente em cada mês, e o saldo de um mês não acumula para o outro.',
+    observacao: 'Solicitado somente nas competências de fevereiro (envios de 11/01 a 10/02) e de julho (envios de 11/06 a 10/07): um reembolso por dependente em cada uma, e o saldo de uma não acumula para a outra.',
     verba: '',
   },
 };
@@ -172,10 +172,8 @@ const UNIDADES = [
 /** Configuração padrão do período e dos benefícios (o RH altera em Configurações). */
 function configuracaoPadrao() {
   return {
-    dia_inicio: 1,
-    dia_fim: 10,
+    dia_fim: 10, // fechamento do ciclo: envios do dia 11 de um mês ao dia 10 do seguinte
     prazo_documento_dias: 60,
-    excecao_ate: '', // AAAA-MM-DD: mantém o portal aberto excepcionalmente até essa data
     portal_suspenso: false, // bloqueia o acesso de todos os colaboradores (ex.: manutenção)
     mensagem_suspensao: '',
     beneficios: Object.fromEntries(CODIGOS.map(c => {
@@ -264,7 +262,26 @@ function mesesDeIdade(nascimento, referencia) {
   return meses;
 }
 
-const competenciaDe = (iso) => iso.slice(0, 7);
+/**
+ * Competência (AAAA-MM) de uma data. O ciclo de envio vai do dia seguinte ao fechamento (padrão: dia 11)
+ * até o dia do fechamento do mês seguinte (padrão: dia 10). Ex.: 11/09 a 10/10 = competência outubro,
+ * fechada no dia 10/10 e paga na folha de outubro (relatório do dia 11).
+ */
+function competenciaDe(iso, diaFechamento = 10) {
+  const [a, m, d] = partes(iso);
+  if (d <= diaFechamento) return iso.slice(0, 7);
+  return m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, '0')}`;
+}
+
+/** Datas do ciclo de envio de uma competência: do dia seguinte ao fechamento anterior até o fechamento. */
+function cicloDaCompetencia(comp, diaFechamento = 10) {
+  const [a, m] = comp.split('-').map(Number);
+  const iso = (dt) => dt.toISOString().slice(0, 10);
+  return {
+    inicio: iso(new Date(Date.UTC(a, m - 2, diaFechamento + 1))),
+    fim: iso(new Date(Date.UTC(a, m - 1, diaFechamento))),
+  };
+}
 
 function formatarCompetencia(comp) {
   const nomes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -279,24 +296,18 @@ function formatarCompetencia(comp) {
  * (ou até a data de exceção definida pelo RH). Devolve também a próxima janela.
  */
 function situacaoPeriodo(config, hoje) {
-  const [a, m, d] = partes(hoje);
-  const dentroDaJanela = d >= config.dia_inicio && d <= config.dia_fim;
-  const porExcecao = Boolean(config.excecao_ate) && hoje <= config.excecao_ate;
-  const aberto = dentroDaJanela || porExcecao;
-  const mesIso = (ano, mes, dia) => new Date(Date.UTC(ano, mes - 1, dia)).toISOString().slice(0, 10);
-  const fimJanela = mesIso(a, m, config.dia_fim);
-  const encerraEm = porExcecao && config.excecao_ate > fimJanela ? config.excecao_ate : fimJanela;
-  const proximaAbertura = d < config.dia_inicio ? mesIso(a, m, config.dia_inicio) : mesIso(a, m + 1, config.dia_inicio);
-  const proximoFim = d < config.dia_inicio ? mesIso(a, m, config.dia_fim) : mesIso(a, m + 1, config.dia_fim);
+  // Envios todos os dias: cada dia pertence a um ciclo (dia 11 de um mês ao dia 10 do seguinte).
+  const competencia = competenciaDe(hoje, config.dia_fim);
+  const ciclo = cicloDaCompetencia(competencia, config.dia_fim);
   return {
-    aberto,
-    por_excecao: porExcecao && !dentroDaJanela,
-    competencia: competenciaDe(hoje),
-    encerra_em: aberto ? encerraEm : null,
-    dias_restantes: aberto ? diasEntre(hoje, encerraEm) + 1 : 0,
-    proxima_abertura: aberto ? null : proximaAbertura,
-    proximo_fim: aberto ? null : proximoFim,
-    dia_inicio: config.dia_inicio,
+    aberto: true,
+    competencia,
+    inicio_ciclo: ciclo.inicio,
+    encerra_em: ciclo.fim, // fechamento da competência; no dia seguinte começa o próximo ciclo
+    dias_restantes: diasEntre(hoje, ciclo.fim) + 1,
+    dias_ciclo: diasEntre(ciclo.inicio, ciclo.fim) + 1,
+    proxima_competencia: competenciaDe(somarMeses(ciclo.fim, 1), config.dia_fim),
+    dia_inicio: config.dia_fim + 1,
     dia_fim: config.dia_fim,
   };
 }
@@ -450,7 +461,7 @@ function formatarReais(centavos) {
 module.exports = {
   FUSO, PARENTESCOS, DOCUMENTOS, BENEFICIOS, CODIGOS, NIVEIS_ENSINO, UNIDADES,
   configuracaoPadrao, mesclarConfiguracao,
-  hojeISO, normalizarData, diasEntre, somarMeses, idadeEm, mesesDeIdade, competenciaDe, formatarCompetencia,
+  hojeISO, normalizarData, diasEntre, somarMeses, idadeEm, mesesDeIdade, competenciaDe, cicloDaCompetencia, formatarCompetencia,
   situacaoPeriodo, validarDataDocumento,
   lerMarcador, normalizarParentesco, ehSucedido, dentroDaFaixa, elegibilidade,
   limiteDoBeneficio, limitePorPerfil, janelaDeSolicitacao, janelaDoLimite, paraCentavos, formatarReais,

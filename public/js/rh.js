@@ -29,6 +29,8 @@ async function carregarFiltros() {
   const opcoesComp = f.competencias.map(c => `<option value="${c}">${competenciaBR(c)}</option>`).join('');
   document.getElementById('painel-comp').innerHTML = opcoesComp;
   document.getElementById('folha-comp').innerHTML = opcoesComp;
+  document.getElementById('folha-comp').value = f.competencia_folha;
+  document.getElementById('painel-comp').value = f.competencia_atual;
   document.getElementById('f-comp').innerHTML = `<option value="">Todas as competências</option>${opcoesComp}`;
   document.getElementById('f-beneficio').innerHTML = `<option value="">Todos os benefícios</option>${f.beneficios.map(b => `<option value="${b.codigo}">${esc(b.nome)}</option>`).join('')}`;
   document.getElementById('f-unidade').innerHTML = `<option value="">Todas as unidades</option>${f.unidades.map(x => `<option>${esc(x)}</option>`).join('')}`;

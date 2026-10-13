@@ -8,21 +8,31 @@ const sucedido = { sucedido: 1, data_admissao: '2008-03-01', elegibilidade: {} }
 const naoSucedido = { sucedido: 0, data_admissao: '2025-01-10', elegibilidade: {} };
 const dep = (parentesco, data_nascimento, elegibilidade = {}) => ({ parentesco, data_nascimento, elegibilidade, ativo: 1 });
 
-test('período: aberto do dia 01 ao dia 10, bloqueado a partir do dia 11', () => {
-  assert.equal(R.situacaoPeriodo(config, '2026-10-01').aberto, true);
-  assert.equal(R.situacaoPeriodo(config, '2026-10-10').aberto, true);
-  const fechado = R.situacaoPeriodo(config, '2026-10-11');
-  assert.equal(fechado.aberto, false);
-  assert.equal(fechado.proxima_abertura, '2026-11-01');
-  assert.equal(R.situacaoPeriodo(config, '2026-12-20').proxima_abertura, '2027-01-01');
-  assert.equal(R.situacaoPeriodo(config, '2026-10-05').dias_restantes, 6);
+test('período: envios todos os dias, ciclo do dia 11 ao dia 10 do mês seguinte', () => {
+  assert.equal(R.competenciaDe('2026-10-10'), '2026-10');
+  assert.equal(R.competenciaDe('2026-10-11'), '2026-11');
+  assert.equal(R.competenciaDe('2026-09-11'), '2026-10');
+  assert.equal(R.competenciaDe('2026-12-11'), '2027-01');
+  assert.deepEqual(R.cicloDaCompetencia('2026-10'), { inicio: '2026-09-11', fim: '2026-10-10' });
+  assert.deepEqual(R.cicloDaCompetencia('2027-01'), { inicio: '2026-12-11', fim: '2027-01-10' });
+  assert.deepEqual(R.cicloDaCompetencia('2026-03'), { inicio: '2026-02-11', fim: '2026-03-10' });
+  for (const dia of ['2026-10-01', '2026-10-10', '2026-10-11', '2026-10-31']) assert.equal(R.situacaoPeriodo(config, dia).aberto, true);
+  const s = R.situacaoPeriodo(config, '2026-10-13');
+  assert.equal(s.competencia, '2026-11');
+  assert.equal(s.inicio_ciclo, '2026-10-11');
+  assert.equal(s.encerra_em, '2026-11-10');
+  assert.equal(s.dias_restantes, 29);
+  assert.equal(s.dias_ciclo, 31);
+  assert.equal(s.proxima_competencia, '2026-12');
+  assert.equal(R.situacaoPeriodo(config, '2026-10-10').dias_restantes, 1);
+  assert.equal(R.situacaoPeriodo(config, '2026-10-10').competencia, '2026-10');
 });
 
-test('período: exceção definida pelo RH mantém o portal aberto', () => {
-  const s = R.situacaoPeriodo({ ...config, excecao_ate: '2026-10-15' }, '2026-10-13');
-  assert.equal(s.aberto, true);
-  assert.equal(s.por_excecao, true);
-  assert.equal(R.situacaoPeriodo({ ...config, excecao_ate: '2026-10-15' }, '2026-10-16').aberto, false);
+test('período: fechamento configurável (ex.: dia 5 → ciclo do dia 6 ao dia 5)', () => {
+  const c = { ...config, dia_fim: 5 };
+  assert.equal(R.competenciaDe('2026-10-05', 5), '2026-10');
+  assert.equal(R.competenciaDe('2026-10-06', 5), '2026-11');
+  assert.equal(R.situacaoPeriodo(c, '2026-10-06').inicio_ciclo, '2026-10-06');
 });
 
 test('documento: até 60 dias da emissão, sem data futura', () => {
