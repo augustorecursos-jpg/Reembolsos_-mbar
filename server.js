@@ -227,6 +227,17 @@ function saldo(colab, beneficio, dependenteId, competencia, referencia, config, 
   return { limite, usado, disponivel, janela, bloqueio, janela_solicitacao: jan, historico, libera_em: liberaEm };
 }
 
+/** Exceções vigentes do colaborador: Map "dependente|benefício" → exceção (dependente 0 = titular). */
+function excecoesDe(cpf, hoje) {
+  return new Map(db.prepare('SELECT * FROM excecoes WHERE cpf = ? AND (valida_ate IS NULL OR valida_ate >= ?)').all(cpf, hoje)
+    .map(e => [`${e.dependente_id || 0}|${e.beneficio}`, e]));
+}
+/** Elegibilidade considerando a exceção individual (se houver). */
+function elegivel(codigo, colab, dep, hoje, config, excecoes) {
+  const exc = (excecoes || excecoesDe(colab.cpf, hoje)).get(`${dep ? dep.id : 0}|${codigo}`) || null;
+  return R.elegibilidade(codigo, colab, dep, hoje, config, exc);
+}
+
 function dependentesDe(cpf) {
   return db.prepare('SELECT * FROM dependentes WHERE cpf_titular = ? AND ativo = 1 ORDER BY nome').all(cpf)
     .map(d => ({ ...d, elegibilidade: JSON.parse(d.elegibilidade || '{}') }));
@@ -236,6 +247,7 @@ function dependentesDe(cpf) {
 function beneficiosDoColaborador(colab, hoje, config) {
   const competencia = R.competenciaDe(hoje, config.dia_fim);
   const deps = dependentesDe(colab.cpf);
+  const excecoes = excecoesDe(colab.cpf, hoje);
   const lista = [];
   for (const codigo of R.CODIGOS) {
     const b = R.BENEFICIOS[codigo];
@@ -243,7 +255,7 @@ function beneficiosDoColaborador(colab, hoje, config) {
       id: d.id, nome: d.nome, tipo: d.parentesco, rotulo: R.PARENTESCOS[d.parentesco] || d.parentesco, dep: d,
     }))];
     const beneficiarios = pessoas
-      .filter(p => R.elegibilidade(codigo, colab, p.dep, hoje, config).elegivel)
+      .filter(p => elegivel(codigo, colab, p.dep, hoje, config, excecoes).elegivel)
       .map(p => {
         const s = saldo(colab, codigo, p.dep ? p.dep.id : null, competencia, hoje, config);
         return {
@@ -427,7 +439,7 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
     dep = dependentesDe(colab.cpf).find(d => d.id === depId);
     if (!dep) return falhar('Beneficiário não encontrado na sua base de dependentes.');
   }
-  const eleg = R.elegibilidade(beneficio, colab, dep, hoje, config);
+  const eleg = elegivel(beneficio, colab, dep, hoje, config);
   if (!eleg.elegivel) return falhar(`Solicitação não permitida: ${eleg.motivo}`);
 
   const dataDoc = R.normalizarData(req.body.data_documento);
@@ -728,14 +740,22 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
     porTitular.get(d.cpf_titular).push(d);
   }
   const qtdSol = new Map(db.prepare('SELECT cpf, COUNT(*) AS n FROM solicitacoes GROUP BY cpf').all().map(r => [r.cpf, r.n]));
+  // Exceções de cada colaborador (todas, para exibir; só as vigentes contam na elegibilidade).
+  const todasExc = new Map();
+  for (const e of db.prepare('SELECT * FROM excecoes ORDER BY criado_em DESC').all()) {
+    if (!todasExc.has(e.cpf)) todasExc.set(e.cpf, []);
+    todasExc.get(e.cpf).push(e);
+  }
   const lista = db.prepare('SELECT * FROM colaboradores ORDER BY nome').all().map(c => {
     c.elegibilidade = JSON.parse(c.elegibilidade || '{}');
     const ds = porTitular.get(c.cpf) || [];
+    const minhas = todasExc.get(c.cpf) || [];
+    const exc = new Map(minhas.filter(e => !e.valida_ate || e.valida_ate >= hoje).map(e => [`${e.dependente_id || 0}|${e.beneficio}`, e]));
     // Para cada benefício: quem é elegível (titular e/ou dependentes).
     const beneficios = Object.fromEntries(R.CODIGOS.map(cod => {
       const nomes = [];
-      if (R.elegibilidade(cod, c, null, hoje, config).elegivel) nomes.push('Titular');
-      for (const d of ds) if (R.elegibilidade(cod, c, d, hoje, config).elegivel) nomes.push(d.nome);
+      if (elegivel(cod, c, null, hoje, config, exc).elegivel) nomes.push('Titular');
+      for (const d of ds) if (elegivel(cod, c, d, hoje, config, exc).elegivel) nomes.push(d.nome);
       return [cod, nomes];
     }));
     return {
@@ -745,9 +765,48 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
       situacao: situacaoColaborador(c), ultimo_acesso: c.ultimo_acesso, solicitacoes: qtdSol.get(c.cpf) || 0,
       dependentes: ds.map(d => ({ id: d.id, nome: d.nome, cpf: d.cpf, parentesco: d.parentesco, rotulo: R.PARENTESCOS[d.parentesco] || d.parentesco, data_nascimento: d.data_nascimento })),
       beneficios,
+      excecoes: minhas.map(e => ({
+        id: e.id, dependente_id: e.dependente_id, beneficio: e.beneficio, tipo: e.tipo, motivo: e.motivo, valida_ate: e.valida_ate,
+        criado_por: e.criado_por, criado_em: e.criado_em, vigente: !e.valida_ate || e.valida_ate >= hoje,
+        beneficiario: e.dependente_id ? (db.prepare('SELECT nome FROM dependentes WHERE id = ?').get(e.dependente_id)?.nome || '(dependente removido)') : c.nome,
+      })),
     };
   });
   res.json(lista);
+});
+
+// -- Exceções de elegibilidade (somente administrador) --
+app.post('/api/admin/colaboradores/:cpf/excecoes', exigirAdmin, (req, res) => {
+  const cpf = normalizarCpf(req.params.cpf);
+  const c = colaboradorPorCpf(cpf);
+  if (!c) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
+  const b = req.body || {};
+  const beneficio = String(b.beneficio || '');
+  if (!R.BENEFICIOS[beneficio]) return res.status(400).json({ erro: 'Selecione o benefício.' });
+  if (!['liberar', 'bloquear'].includes(b.tipo)) return res.status(400).json({ erro: 'Escolha liberar ou bloquear.' });
+  const motivo = String(b.motivo || '').trim().slice(0, 300);
+  if (!motivo) return res.status(400).json({ erro: 'Informe o motivo da exceção (ex.: acordo coletivo).' });
+  const depId = Number(b.dependente_id) || null;
+  const dep = depId && db.prepare('SELECT * FROM dependentes WHERE id = ? AND cpf_titular = ?').get(depId, cpf);
+  if (depId && !dep) return res.status(400).json({ erro: 'Beneficiário não encontrado entre os dependentes.' });
+  const validaAte = b.valida_ate ? R.normalizarData(b.valida_ate) : null;
+  if (b.valida_ate && !validaAte) return res.status(400).json({ erro: 'Data de validade inválida.' });
+  if (validaAte && validaAte < R.hojeISO()) return res.status(400).json({ erro: 'A validade não pode ser uma data passada.' });
+  db.prepare(`INSERT INTO excecoes (chave, cpf, dependente_id, beneficio, tipo, motivo, valida_ate, criado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(chave) DO UPDATE SET tipo = excluded.tipo, motivo = excluded.motivo, valida_ate = excluded.valida_ate,
+      criado_por = excluded.criado_por, criado_em = datetime('now')`)
+    .run(`${cpf}|${depId || 0}|${beneficio}`, cpf, depId, beneficio, b.tipo, motivo, validaAte, req.rh.nome);
+  auditar(req, b.tipo === 'liberar' ? 'Liberou benefício por exceção' : 'Bloqueou benefício por exceção',
+    `${R.BENEFICIOS[beneficio].curto} · ${dep ? `${dep.nome} (dependente de ${c.nome})` : c.nome} · CPF ${cpf} · ${motivo}${validaAte ? ` · até ${dataBr(validaAte)}` : ''}`);
+  res.status(201).json({ ok: true });
+});
+
+app.post('/api/admin/excecoes/:id/remover', exigirAdmin, (req, res) => {
+  const e = db.prepare('SELECT e.*, c.nome FROM excecoes e JOIN colaboradores c ON c.cpf = e.cpf WHERE e.id = ?').get(Number(req.params.id));
+  if (!e) return res.status(404).json({ erro: 'Exceção não encontrada.' });
+  db.prepare('DELETE FROM excecoes WHERE id = ?').run(e.id);
+  auditar(req, 'Removeu exceção de benefício', `${R.BENEFICIOS[e.beneficio]?.curto || e.beneficio} · ${e.tipo === 'liberar' ? 'liberado' : 'bloqueado'} · ${e.nome} · CPF ${e.cpf} · ${e.motivo}`);
+  res.json({ ok: true });
 });
 
 app.get('/api/admin/unidades', exigirRh, (_req, res) => res.json(R.UNIDADES));
@@ -1060,7 +1119,7 @@ function importarHistorico(req, res, beneficioPadrao) {
       if (nomeChave(dep.nome) !== nb) out.avisos.push(`Associado ao dependente “${dep.nome}”.`);
       dep.elegibilidade = JSON.parse(dep.elegibilidade || '{}');
     }
-    const eleg = R.elegibilidade(beneficio, colab, dep, hoje, config);
+    const eleg = elegivel(beneficio, colab, dep, hoje, config);
     if (!eleg.elegivel) out.avisos.push(`Hoje não é elegível a ${b.curto}: ${eleg.motivo}`);
     out.vinculo = dep ? (R.PARENTESCOS[dep.parentesco] || dep.parentesco) : 'Titular';
     out.beneficiario_base = dep ? dep.nome : colab.nome;

@@ -164,6 +164,23 @@ CREATE INDEX IF NOT EXISTS idx_hist_benef ON historico_reembolsos (cpf, benefici
 // Competência do pagamento (AAAA-MM): é por ela que o histórico conta nos benefícios mensais e no Material Escolar.
 adicionarColuna('historico_reembolsos', 'competencia', 'TEXT');
 
+// Exceções individuais de elegibilidade cadastradas pelo administrador (ex.: acordo coletivo).
+// Ficam fora da base mensal: novas cargas da planilha não as apagam.
+db.exec(`
+CREATE TABLE IF NOT EXISTS excecoes (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  chave         TEXT NOT NULL UNIQUE,              -- cpf|dependente (0 = titular)|benefício
+  cpf           TEXT NOT NULL REFERENCES colaboradores(cpf),
+  dependente_id INTEGER REFERENCES dependentes(id), -- NULL = o próprio titular
+  beneficio     TEXT NOT NULL,
+  tipo          TEXT NOT NULL,                     -- liberar | bloquear
+  motivo        TEXT NOT NULL,
+  valida_ate    TEXT,                              -- AAAA-MM-DD; NULL = sem prazo
+  criado_por    TEXT,
+  criado_em     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
 // Registro das ações de quem usa a Área do RH e a Administração.
 db.exec(`
 CREATE TABLE IF NOT EXISTS auditoria (

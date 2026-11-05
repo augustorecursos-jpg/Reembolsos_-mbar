@@ -7,6 +7,7 @@ const SITUACOES = {
   fora_base: ['neutra', 'Fora da base'],
   excluido: ['neutra', 'Acesso excluído'],
 };
+const NOMES_BENEF = { medicamento: 'Medicamento', educacional: 'Educacional', creche: 'Creche/Babá', oculos: 'Óculos', material: 'Material Escolar/Uniforme' };
 const OPCOES_PARENTESCO = [['conjuge', 'Cônjuge/Companheiro(a)'], ['filho', 'Filho(a)'], ['enteado', 'Enteado(a)'], ['neto', 'Neto(a) com tutela'], ['tutelado', 'Tutelado(a)'], ['pai', 'Pai'], ['mae', 'Mãe']];
 
 const Colaboradores = (() => {
@@ -18,8 +19,8 @@ const Colaboradores = (() => {
   let unidades = []; // lista oficial de filiais (regras.js)
   const $ = (id) => document.getElementById(id);
 
-  function montar(container, { aoVerHistorico } = {}) {
-    opcoes = { aoVerHistorico };
+  function montar(container, { aoVerHistorico, admin = false } = {}) {
+    opcoes = { aoVerHistorico, admin };
     container.innerHTML = `
       <div class="ind-cab">
         <h1 class="titulo-pagina">Colaboradores e <em>acessos</em></h1>
@@ -74,6 +75,22 @@ const Colaboradores = (() => {
             </form>
             <p class="q-dica" id="deps-dica"></p>
           </section>
+          <section id="colab-exc" hidden>
+            <h4 class="titulo-bloco">⭐ Exceções de elegibilidade</h4>
+            <div class="tabela-wrap"><table class="tabela" id="tabela-exc"></table></div>
+            ${admin ? `<form id="form-exc" class="grade-colab grade-exc">
+              <label class="rotulo">Beneficiário<select class="campo" name="dependente_id"></select></label>
+              <label class="rotulo">Benefício<select class="campo" name="beneficio" required><option value="">Selecione…</option>
+                ${Object.entries(NOMES_BENEF).map(([k, v]) => `<option value="${k}">${ICONES[k]} ${v}</option>`).join('')}</select></label>
+              <label class="rotulo">Exceção<select class="campo" name="tipo"><option value="liberar">Liberar (mesmo fora da regra)</option><option value="bloquear">Bloquear</option></select></label>
+              <label class="rotulo">Válida até <small>(opcional)</small><input class="campo" type="date" name="valida_ate"></label>
+              <label class="rotulo largo">Motivo<input class="campo" name="motivo" maxlength="300" required placeholder="Ex.: acordo coletivo 2026/2027"></label>
+              <div class="largo acoes-form"><button class="btn btn-laranja" type="submit">Salvar exceção</button></div>
+            </form>` : ''}
+            <p class="q-dica">${admin
+              ? 'A exceção vale acima da regra do benefício e da base mensal (novas cargas da planilha não a apagam). O limite de valor e os prazos continuam os do benefício. Tudo fica na auditoria.'
+              : 'Exceções são cadastradas pelo administrador do portal.'}</p>
+          </section>
         </div>
         <footer id="colab-rodape-novo"><span class="q-dica">Os dependentes da lista são salvos junto com o colaborador.</span>
           <button class="btn btn-laranja" type="submit" form="form-colab">Incluir colaborador</button></footer>
@@ -102,6 +119,8 @@ const Colaboradores = (() => {
     $('dep-cancelar').addEventListener('click', limparDependente);
     $('tabela-deps').addEventListener('click', aoClicarDependente);
     $('form-acesso').addEventListener('submit', confirmarAcesso);
+    $('tabela-exc').addEventListener('click', removerExcecao);
+    if (admin) $('form-exc').addEventListener('submit', salvarExcecao);
   }
 
   async function carregar() {
@@ -132,7 +151,8 @@ const Colaboradores = (() => {
             ${c.data_desligamento ? `<br><small class="q-dica">Desligamento: ${dataBR(c.data_desligamento)}</small>` : ''}</td>
           <td>${c.sucedido ? 'Sucedido' : 'Não sucedido'}<br><small class="q-dica">Admissão ${c.data_admissao ? dataBR(c.data_admissao) : '–'}</small></td>
           <td title="${esc(c.dependentes.map(d => `${d.nome} (${d.rotulo})`).join('\n'))}">${fmt(c.dependentes.length)}</td>
-          <td>${Object.entries(c.beneficios).filter(([, n]) => n.length).map(([k, n]) => `<span class="etiqueta neutra" title="${esc(n.join('\n'))}">${ICONES[k]} ${n.length}</span>`).join(' ') || '<span class="q-dica">nenhum</span>'}</td>
+          <td>${Object.entries(c.beneficios).filter(([, n]) => n.length).map(([k, n]) => `<span class="etiqueta neutra" title="${esc(n.join('\n'))}">${ICONES[k]} ${n.length}</span>`).join(' ') || '<span class="q-dica">nenhum</span>'}
+            ${c.excecoes.some(e => e.vigente) ? `<br><span class="etiqueta exc" title="${esc(c.excecoes.filter(e => e.vigente).map(e => `${e.tipo === 'liberar' ? 'Liberado' : 'Bloqueado'}: ${NOMES_BENEF[e.beneficio]} · ${e.beneficiario} · ${e.motivo}`).join('\n'))}">⭐ exceção</span>` : ''}</td>
           <td>${c.solicitacoes ? (opcoes.aoVerHistorico ? `<button class="link-btn" data-historico="${c.cpf}">${fmt(c.solicitacoes)} · ver</button>` : fmt(c.solicitacoes)) : '<span class="q-dica">0</span>'}</td>
           <td><span class="etiqueta ${classe}">${rotulo}</span>${c.motivo_bloqueio && !temAcesso ? `<br><small class="q-dica">${esc(c.motivo_bloqueio)}</small>` : ''}${c.excluido_em ? `<br><small class="q-dica">em ${dataBR(c.excluido_em.slice(0, 10))}</small>` : ''}</td>
           <td class="acoes-colab">
@@ -213,6 +233,7 @@ const Colaboradores = (() => {
     $('colab-rodape-novo').hidden = Boolean(c);
     if (!c) pendentes = [];
     renderDependentes();
+    renderExcecoes();
     if (!$('modal-colab').open) $('modal-colab').showModal();
     (c ? f.matricula : f.cpf).focus();
   }
@@ -231,6 +252,51 @@ const Colaboradores = (() => {
       ${dependentesAtuais().map(d => `<tr><td>${esc(d.nome)}</td><td>${esc(d.rotulo)}</td><td>${d.data_nascimento ? dataBR(d.data_nascimento) : '–'}</td><td>${d.cpf ? formatarCpf(d.cpf) : '–'}</td>
         <td class="acoes-colab"><button class="btn btn-claro btn-sm" data-dep-editar="${d.id}">Editar</button><button class="btn btn-perigo btn-sm" data-dep-remover="${d.id}">Remover</button></td></tr>`).join('')
         || '<tr><td colspan="5" class="q-dica">Nenhum dependente cadastrado.</td></tr>'}`;
+  }
+
+  function renderExcecoes() {
+    const c = editando && porCpf(editando);
+    $('colab-exc').hidden = !c || (!opcoes.admin && !c.excecoes.length);
+    if (!c) return;
+    $('tabela-exc').innerHTML = `
+      <tr><th>Beneficiário</th><th>Benefício</th><th>Exceção</th><th>Motivo</th><th>Validade</th><th>Cadastrada</th>${opcoes.admin ? '<th></th>' : ''}</tr>
+      ${c.excecoes.map(e => `<tr class="${e.vigente ? '' : 'inativo'}">
+        <td>${esc(e.beneficiario)}</td><td>${ICONES[e.beneficio]} ${esc(NOMES_BENEF[e.beneficio])}</td>
+        <td><span class="etiqueta ${e.tipo === 'liberar' ? 'ok' : 'nao'}">${e.tipo === 'liberar' ? 'Liberado' : 'Bloqueado'}</span></td>
+        <td>${esc(e.motivo)}</td><td>${e.valida_ate ? `até ${dataBR(e.valida_ate)}${e.vigente ? '' : ' (vencida)'}` : 'sem prazo'}</td>
+        <td><small class="q-dica">${dataHoraBR(e.criado_em)}<br>${esc(e.criado_por || '')}</small></td>
+        ${opcoes.admin ? `<td><button class="btn btn-perigo btn-sm" data-exc-remover="${e.id}">Remover</button></td>` : ''}</tr>`).join('')
+        || `<tr><td colspan="${opcoes.admin ? 7 : 6}" class="q-dica">Nenhuma exceção: este colaborador segue as regras dos benefícios.</td></tr>`}`;
+    if (opcoes.admin) {
+      const f = $('form-exc');
+      f.reset();
+      f.dependente_id.innerHTML = `<option value="">${esc(c.nome)} (titular)</option>`
+        + c.dependentes.map(d => `<option value="${d.id}">${esc(d.nome)} (${esc(d.rotulo)})</option>`).join('');
+    }
+  }
+
+  async function salvarExcecao(e) {
+    e.preventDefault();
+    const f = e.target;
+    const corpo = Object.fromEntries(['dependente_id', 'beneficio', 'tipo', 'valida_ate', 'motivo'].map(k => [k, f[k].value]));
+    try {
+      await api(`/api/admin/colaboradores/${editando}/excecoes`, { method: 'POST', body: corpo });
+      toast(corpo.tipo === 'liberar' ? 'Exceção salva: benefício liberado.' : 'Exceção salva: benefício bloqueado.');
+      await carregar();
+      renderExcecoes();
+    } catch (err) { toast(err.message, 'erro'); }
+  }
+
+  async function removerExcecao(e) {
+    const b = e.target.closest('[data-exc-remover]');
+    if (!b) return;
+    if (!confirm('Remover esta exceção? O beneficiário volta a seguir a regra do benefício.')) return;
+    try {
+      await api(`/api/admin/excecoes/${b.dataset.excRemover}/remover`, { method: 'POST', body: {} });
+      toast('Exceção removida.');
+      await carregar();
+      renderExcecoes();
+    } catch (err) { toast(err.message, 'erro'); }
   }
 
   function limparDependente() {

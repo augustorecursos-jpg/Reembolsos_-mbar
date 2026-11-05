@@ -382,10 +382,16 @@ function dentroDaFaixa(faixa, nascimento, hoje) {
  * colab: { sucedido, data_admissao, elegibilidade: { medicamento: 'S'|'N'|'' , ... } }
  * dep:   null (titular) ou { parentesco, data_nascimento, ativo, elegibilidade: {...} }
  */
-function elegibilidade(codigo, colab, dep, hoje, config) {
+function elegibilidade(codigo, colab, dep, hoje, config, excecao = null) {
   const b = BENEFICIOS[codigo];
   const cfg = config.beneficios[codigo];
   if (!b || !cfg || !cfg.ativo) return { elegivel: false, motivo: 'Benefício indisponível.' };
+  // Exceção individual cadastrada pelo administrador (ex.: acordo coletivo): vale acima da regra e da base.
+  if (excecao && excecao.tipo === 'bloquear') return { elegivel: false, motivo: 'Benefício bloqueado por exceção do RH.', excecao: true };
+  if (excecao && excecao.tipo === 'liberar') {
+    if (dep && dep.ativo === 0) return { elegivel: false, motivo: 'Dependente inativo na base.' };
+    return { elegivel: true, excecao: true };
+  }
   const marcadorTitular = (colab.elegibilidade || {})[codigo] || '';
   if (marcadorTitular === 'N') return { elegivel: false, motivo: 'Benefício não disponível para o seu cadastro.' };
   if (!dep) {

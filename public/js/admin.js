@@ -239,6 +239,7 @@ async function carregarBase() {
 // ---------- Colaboradores e bloqueio de acesso ----------
 // Mesma tela da Área do RH; “ver” abre o histórico do colaborador na análise de solicitações.
 Colaboradores.montar(document.getElementById('area-colaboradores'), {
+  admin: true, // exceções de elegibilidade só na Administração
   aoVerHistorico: (cpf) => {
     try { sessionStorage.setItem('rh-historico-cpf', cpf); } catch { /* sem storage */ }
     location.href = 'rh.html#solicitacoes';

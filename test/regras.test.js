@@ -119,6 +119,18 @@ test('conversões de data, valor e parentesco', () => {
   assert.equal(R.normalizarParentesco('Neta'), 'neto');
 });
 
+test('exceção individual: libera fora da regra (inclusive o titular) ou bloqueia', () => {
+  const hoje = '2026-11-05';
+  assert.equal(R.elegibilidade('educacional', sucedido, null, hoje, config).elegivel, false);
+  assert.equal(R.elegibilidade('educacional', sucedido, null, hoje, config, { tipo: 'liberar' }).elegivel, true);
+  assert.equal(R.elegibilidade('educacional', sucedido, dep('filho', '2005-01-01'), hoje, config, { tipo: 'liberar' }).elegivel, true);
+  assert.equal(R.elegibilidade('medicamento', sucedido, null, hoje, config, { tipo: 'bloquear' }).elegivel, false);
+  assert.equal(R.elegibilidade('educacional', { ...sucedido, elegibilidade: { educacional: 'N' } }, null, hoje, config, { tipo: 'liberar' }).elegivel, true);
+  assert.equal(R.elegibilidade('educacional', sucedido, { ...dep('filho', '2016-01-01'), ativo: 0 }, hoje, config, { tipo: 'liberar' }).elegivel, false);
+  const inativo = { ...config, beneficios: { ...config.beneficios, educacional: { ...config.beneficios.educacional, ativo: false } } };
+  assert.equal(R.elegibilidade('educacional', sucedido, null, hoje, inativo, { tipo: 'liberar' }).elegivel, false);
+});
+
 test('material escolar/uniforme: filhos de 7 a 17 anos, limites e janelas de fevereiro e julho', () => {
   const hoje = '2027-02-05';
   assert.equal(R.limiteDoBeneficio('material', sucedido, config), 146726);
