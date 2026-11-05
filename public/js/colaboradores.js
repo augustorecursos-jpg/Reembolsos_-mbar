@@ -152,6 +152,7 @@ const Colaboradores = (() => {
           <td>${c.sucedido ? 'Sucedido' : 'Não sucedido'}<br><small class="q-dica">Admissão ${c.data_admissao ? dataBR(c.data_admissao) : '–'}</small></td>
           <td title="${esc(c.dependentes.map(d => `${d.nome} (${d.rotulo})`).join('\n'))}">${fmt(c.dependentes.length)}</td>
           <td>${Object.entries(c.beneficios).filter(([, n]) => n.length).map(([k, n]) => `<span class="etiqueta neutra" title="${esc(n.join('\n'))}">${ICONES[k]} ${n.length}</span>`).join(' ') || '<span class="q-dica">nenhum</span>'}
+            ${(c.fora_da_regra || []).length ? `<br><span class="etiqueta nao" title="${esc(c.fora_da_regra.map(f => `${NOMES_BENEF[f.beneficio]} · ${f.nome} · ${f.origem === 'base' ? 'coluna S da base' : 'exceção'}${f.motivo_regra ? ` · pela regra: ${f.motivo_regra}` : ''}`).join('\n'))}">⚠️ fora da regra</span>` : ''}
             ${c.excecoes.some(e => e.vigente) ? `<br><span class="etiqueta exc" title="${esc(c.excecoes.filter(e => e.vigente).map(e => `${e.tipo === 'liberar' ? 'Liberado' : 'Bloqueado'}: ${NOMES_BENEF[e.beneficio]} · ${e.beneficiario} · ${e.motivo}`).join('\n'))}">⭐ exceção</span>` : ''}</td>
           <td>${c.solicitacoes ? (opcoes.aoVerHistorico ? `<button class="link-btn" data-historico="${c.cpf}">${fmt(c.solicitacoes)} · ver</button>` : fmt(c.solicitacoes)) : '<span class="q-dica">0</span>'}</td>
           <td><span class="etiqueta ${classe}">${rotulo}</span>${c.motivo_bloqueio && !temAcesso ? `<br><small class="q-dica">${esc(c.motivo_bloqueio)}</small>` : ''}${c.excluido_em ? `<br><small class="q-dica">em ${dataBR(c.excluido_em.slice(0, 10))}</small>` : ''}</td>
@@ -247,11 +248,16 @@ const Colaboradores = (() => {
     $('deps-dica').textContent = editando
       ? 'Remover um dependente tira ele dos benefícios a partir de agora; as solicitações já feitas para ele continuam no histórico.'
       : 'Inclua os dependentes agora (opcional). Eles só são gravados quando você clicar em “Incluir colaborador”.';
+    const c = editando && porCpf(editando);
+    const fora = c ? c.fora_da_regra || [] : [];
     $('tabela-deps').innerHTML = `
-      <tr><th>Nome</th><th>Parentesco</th><th>Nascimento</th><th>CPF</th><th></th></tr>
-      ${dependentesAtuais().map(d => `<tr><td>${esc(d.nome)}</td><td>${esc(d.rotulo)}</td><td>${d.data_nascimento ? dataBR(d.data_nascimento) : '–'}</td><td>${d.cpf ? formatarCpf(d.cpf) : '–'}</td>
+      ${fora.length ? `<tr><td colspan="6"><div class="alerta aviso" style="margin:0">⚠️ <span><strong>Liberado fora da regra:</strong> ${fora.map(f => `${esc(f.nome.split(' ')[0])} — ${esc(NOMES_BENEF[f.beneficio])} ${f.origem === 'base' ? `(coluna ${f.beneficio.toUpperCase()} = S na base)` : '(exceção do administrador)'}${f.motivo_regra ? `; pela regra: ${esc(f.motivo_regra.toLowerCase())}` : ''}`).join(' · ')}</span></div></td></tr>` : ''}
+      <tr><th>Nome</th><th>Parentesco</th><th>Nascimento</th><th>CPF</th><th>Marcações da base</th><th></th></tr>
+      ${dependentesAtuais().map(d => `<tr><td>${esc(d.nome)}</td><td>${esc(d.rotulo)}</td>
+        <td>${d.data_nascimento ? `${dataBR(d.data_nascimento)}${d.idade ? `<br><small class="q-dica">${esc(d.idade)}</small>` : ''}` : '–'}</td><td>${d.cpf ? formatarCpf(d.cpf) : '–'}</td>
+        <td>${Object.entries(d.marcacoes || {}).map(([k, v]) => `<span class="etiqueta ${v === 'S' ? 'exc' : 'nao'}" title="${v === 'S' ? 'S na planilha: libera mesmo fora da regra' : 'N na planilha: bloqueia'}">${k.toUpperCase()}: ${v}</span>`).join(' ') || '<span class="q-dica">–</span>'}</td>
         <td class="acoes-colab"><button class="btn btn-claro btn-sm" data-dep-editar="${d.id}">Editar</button><button class="btn btn-perigo btn-sm" data-dep-remover="${d.id}">Remover</button></td></tr>`).join('')
-        || '<tr><td colspan="5" class="q-dica">Nenhum dependente cadastrado.</td></tr>'}`;
+        || '<tr><td colspan="6" class="q-dica">Nenhum dependente cadastrado.</td></tr>'}`;
   }
 
   function renderExcecoes() {

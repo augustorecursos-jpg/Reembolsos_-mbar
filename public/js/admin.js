@@ -112,7 +112,9 @@ function ligarImportacao(tipo, idArquivo, idBotao, idPrevia, nomeModo, rota) {
       const r = await api(rota, { method: 'POST', body: { linhas: adm.linhas[tipo], modo } });
       previa.innerHTML = `
         <p>✅ <strong>${fmt(r.importados)}</strong> ${tipo === 'colab' ? 'colaboradores' : 'dependentes'} importados · ${fmt(r.ativos)} ativos na base.</p>
-        ${r.invalidas.length ? `<p class="aviso">${r.invalidas.length} linha(s) ignorada(s): ${r.invalidas.slice(0, 10).map(i => `linha ${i.linha} (${esc(i.motivo)})`).join(', ')}${r.invalidas.length > 10 ? '…' : ''}</p>` : ''}`;
+        ${r.invalidas.length ? `<p class="aviso">${r.invalidas.length} linha(s) ignorada(s): ${r.invalidas.slice(0, 10).map(i => `linha ${i.linha} (${esc(i.motivo)})`).join(', ')}${r.invalidas.length > 10 ? '…' : ''}</p>` : ''}
+        ${(r.fora_da_regra || []).length ? `<div class="alerta aviso" style="margin-top:.6rem">⚠️ <div><strong>${r.fora_da_regra.length} liberação(ões) fora da regra pela coluna S da planilha.</strong> Confira se são exceções de verdade; se não, deixe a coluna vazia e importe de novo.
+          <ul style="margin:.4rem 0 0;padding-left:1.1rem">${r.fora_da_regra.slice(0, 30).map(f => `<li>${esc(f.nome)} (dependente de ${esc(f.titular)}) — ${esc(f.beneficio)}${f.idade ? `, ${esc(f.idade)}` : ''}: ${esc(f.motivo || '')}</li>`).join('')}</ul></div></div>` : ''}`;
       document.getElementById(idArquivo).value = '';
       adm.linhas[tipo] = [];
       carregarBase();

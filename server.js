@@ -238,6 +238,18 @@ function elegivel(codigo, colab, dep, hoje, config, excecoes) {
   return R.elegibilidade(codigo, colab, dep, hoje, config, exc);
 }
 
+/** "4 meses", "2 anos e 3 meses" — idade de um dependente numa data. */
+function textoIdade(nascimento, ref) {
+  if (!nascimento) return null;
+  const m = R.mesesDeIdade(nascimento, ref);
+  if (m < 0) return 'nascimento após a data';
+  const anos = Math.floor(m / 12), meses = m % 12;
+  const pl = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+  if (!anos) return pl(meses, 'mês', 'meses');
+  return meses ? `${pl(anos, 'ano', 'anos')} e ${pl(meses, 'mês', 'meses')}` : pl(anos, 'ano', 'anos');
+}
+const ORIGEM_TEXTO = { regra: 'pela regra do benefício', base: 'pela coluna da base de elegibilidade (S), fora da regra', excecao: 'por exceção cadastrada pelo administrador' };
+
 function dependentesDe(cpf) {
   return db.prepare('SELECT * FROM dependentes WHERE cpf_titular = ? AND ativo = 1 ORDER BY nome').all(cpf)
     .map(d => ({ ...d, elegibilidade: JSON.parse(d.elegibilidade || '{}') }));
@@ -653,6 +665,19 @@ app.get('/api/admin/solicitacoes/:id', exigirRh, (req, res) => {
       ? db.prepare('SELECT data_pagamento, valor, beneficiario_nome, competencia FROM historico_reembolsos WHERE cpf = ? AND beneficio = ? ORDER BY data_pagamento DESC').all(s.cpf, s.beneficio)
       : db.prepare('SELECT data_pagamento, valor, beneficiario_nome, competencia FROM historico_reembolsos WHERE cpf = ? AND beneficio = ? AND dependente_id IS ? ORDER BY data_pagamento DESC').all(s.cpf, s.beneficio, s.dependente_id ?? null),
     dias_documento: R.diasEntre(s.data_documento, s.criado_em.slice(0, 10)),
+    elegibilidade: (() => {
+      // Por que o beneficiário é elegível hoje (regra, coluna S da base ou exceção) e a idade dele no envio.
+      if (!colab.cpf) return null;
+      const dep = s.dependente_id ? db.prepare('SELECT * FROM dependentes WHERE id = ?').get(s.dependente_id) : null;
+      if (dep) dep.elegibilidade = JSON.parse(dep.elegibilidade || '{}');
+      const c = { ...colab, elegibilidade: JSON.parse(colab.elegibilidade || '{}') };
+      const hoje = R.hojeISO();
+      const r = elegivel(s.beneficio, c, dep, hoje, config);
+      return {
+        elegivel: r.elegivel, origem: r.origem || null, texto: r.elegivel ? ORIGEM_TEXTO[r.origem || 'regra'] : r.motivo, motivo_regra: r.motivoRegra || null,
+        nascimento: dep ? dep.data_nascimento : null, idade_envio: dep ? textoIdade(dep.data_nascimento, s.criado_em.slice(0, 10)) : null,
+      };
+    })(),
   });
 });
 
@@ -752,10 +777,15 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
     const minhas = todasExc.get(c.cpf) || [];
     const exc = new Map(minhas.filter(e => !e.valida_ate || e.valida_ate >= hoje).map(e => [`${e.dependente_id || 0}|${e.beneficio}`, e]));
     // Para cada benefício: quem é elegível (titular e/ou dependentes).
+    const foraDaRegra = []; // liberados pela coluna S da base ou por exceção, que a regra não contemplaria
     const beneficios = Object.fromEntries(R.CODIGOS.map(cod => {
       const nomes = [];
-      if (elegivel(cod, c, null, hoje, config, exc).elegivel) nomes.push('Titular');
-      for (const d of ds) if (elegivel(cod, c, d, hoje, config, exc).elegivel) nomes.push(d.nome);
+      for (const d of [null, ...ds]) {
+        const r = elegivel(cod, c, d, hoje, config, exc);
+        if (!r.elegivel) continue;
+        nomes.push(d ? d.nome : 'Titular');
+        if (r.origem && r.origem !== 'regra') foraDaRegra.push({ beneficio: cod, nome: d ? d.nome : c.nome, origem: r.origem, motivo_regra: r.motivoRegra });
+      }
       return [cod, nomes];
     }));
     return {
@@ -763,8 +793,13 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
       data_admissao: c.data_admissao, sucedido: R.ehSucedido(c), sucedido_base: c.sucedido, data_desligamento: c.data_desligamento,
       ativo: c.ativo, bloqueado: c.bloqueado, motivo_bloqueio: c.motivo_bloqueio, excluido_em: c.excluido_em, origem: c.origem,
       situacao: situacaoColaborador(c), ultimo_acesso: c.ultimo_acesso, solicitacoes: qtdSol.get(c.cpf) || 0,
-      dependentes: ds.map(d => ({ id: d.id, nome: d.nome, cpf: d.cpf, parentesco: d.parentesco, rotulo: R.PARENTESCOS[d.parentesco] || d.parentesco, data_nascimento: d.data_nascimento })),
+      dependentes: ds.map(d => ({
+        id: d.id, nome: d.nome, cpf: d.cpf, parentesco: d.parentesco, rotulo: R.PARENTESCOS[d.parentesco] || d.parentesco, data_nascimento: d.data_nascimento,
+        idade: textoIdade(d.data_nascimento, hoje),
+        marcacoes: Object.fromEntries(Object.entries(d.elegibilidade || {}).filter(([, v]) => v)), // colunas S/N da planilha
+      })),
       beneficios,
+      fora_da_regra: foraDaRegra,
       excecoes: minhas.map(e => ({
         id: e.id, dependente_id: e.dependente_id, beneficio: e.beneficio, tipo: e.tipo, motivo: e.motivo, valida_ate: e.valida_ate,
         criado_por: e.criado_por, criado_em: e.criado_em, vigente: !e.valida_ate || e.valida_ate >= hoje,
@@ -1032,7 +1067,26 @@ app.post('/api/admin/base/dependentes', exigirAdmin, (req, res) => {
     throw e;
   }
   const ativos = db.prepare('SELECT COUNT(*) AS n FROM dependentes WHERE ativo = 1').get().n;
-  res.json({ importados: validos.length, invalidas, ativos });
+  // Aviso: dependentes que a coluna S da planilha libera fora da regra (parentesco ou idade).
+  const config = configuracao();
+  const hoje = R.hojeISO();
+  const fora_da_regra = [];
+  const buscaDep = db.prepare('SELECT d.*, c.nome AS titular FROM dependentes d JOIN colaboradores c ON c.cpf = d.cpf_titular WHERE d.cpf_titular = ? AND d.chave = ?');
+  for (const v of validos) {
+    const marc = JSON.parse(v.elegibilidade);
+    if (!Object.values(marc).includes('S')) continue;
+    const d = buscaDep.get(v.cpfTitular, v.chave);
+    const colab = lerColaborador(v.cpfTitular) || db.prepare('SELECT * FROM colaboradores WHERE cpf = ?').get(v.cpfTitular);
+    if (!d || !colab) continue;
+    if (typeof colab.elegibilidade === 'string') colab.elegibilidade = JSON.parse(colab.elegibilidade || '{}');
+    d.elegibilidade = marc;
+    for (const [cod, m] of Object.entries(marc)) {
+      if (m !== 'S') continue;
+      const r = R.elegibilidade(cod, colab, d, hoje, config);
+      if (r.elegivel && r.origem === 'base') fora_da_regra.push({ titular: d.titular, nome: d.nome, beneficio: R.BENEFICIOS[cod].curto, motivo: r.motivoRegra, idade: textoIdade(d.data_nascimento, hoje) });
+    }
+  }
+  res.json({ importados: validos.length, invalidas, ativos, fora_da_regra });
 });
 
 // -- Histórico de reembolsos pagos fora do portal (todos os benefícios) --

@@ -119,6 +119,18 @@ test('conversões de data, valor e parentesco', () => {
   assert.equal(R.normalizarParentesco('Neta'), 'neto');
 });
 
+test('origem da elegibilidade: regra, coluna S da base ou exceção', () => {
+  const hoje = '2026-11-05';
+  const bebe = dep('filho', '2026-07-02'); // 4 meses
+  assert.equal(R.elegibilidade('creche', sucedido, bebe, hoje, config).elegivel, false);
+  const pelaBase = R.elegibilidade('creche', sucedido, { ...bebe, elegibilidade: { creche: 'S' } }, hoje, config);
+  assert.equal(pelaBase.elegivel, true);
+  assert.equal(pelaBase.origem, 'base');
+  assert.equal(pelaBase.motivoRegra, 'Benefício a partir dos 6 meses de idade.');
+  assert.equal(R.elegibilidade('creche', sucedido, { ...dep('filho', '2023-01-01'), elegibilidade: { creche: 'S' } }, hoje, config).origem, 'regra');
+  assert.equal(R.elegibilidade('creche', sucedido, bebe, hoje, config, { tipo: 'liberar' }).origem, 'excecao');
+});
+
 test('exceção individual: libera fora da regra (inclusive o titular) ou bloqueia', () => {
   const hoje = '2026-11-05';
   assert.equal(R.elegibilidade('educacional', sucedido, null, hoje, config).elegivel, false);

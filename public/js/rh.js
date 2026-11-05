@@ -160,13 +160,16 @@ async function abrirAnalise(id) {
         </dl>
         <h4 style="margin-top:.4rem">Despesa</h4>
         <dl class="dados-cad">
-          <div><dt>Beneficiário</dt><dd>${esc(s.beneficiario_nome)}<br><small style="font-weight:400">${esc(s.beneficiario_rotulo)}</small></dd></div>
+          <div><dt>Beneficiário</dt><dd>${esc(s.beneficiario_nome)}<br><small style="font-weight:400">${esc(s.beneficiario_rotulo)}${s.elegibilidade?.idade_envio ? ` · ${esc(s.elegibilidade.idade_envio)} no envio (nasc. ${dataBR(s.elegibilidade.nascimento)})` : ''}</small></dd></div>
           <div><dt>Data do documento</dt><dd>${dataBR(s.data_documento)}<br><small style="font-weight:400">${fmt(s.dias_documento)} dia(s) antes do envio</small></dd></div>
           <div><dt>Enviada em</dt><dd>${dataHoraBR(s.criado_em)}</dd></div>
           <div><dt>Valor solicitado</dt><dd class="valor-grande">${reais(s.valor_solicitado)}</dd></div>
           ${s.detalhes.nivel_ensino ? `<div><dt>Nível de ensino</dt><dd>${esc(s.detalhes.nivel_ensino)}</dd></div>` : ''}
           ${s.detalhes.descricao ? `<div style="grid-column:1/-1"><dt>Descrição</dt><dd>${esc(s.detalhes.descricao)}</dd></div>` : ''}
         </dl>
+        ${s.elegibilidade && (!s.elegibilidade.elegivel || s.elegibilidade.origem !== 'regra') ? `<div class="alerta ${s.elegibilidade.elegivel ? 'aviso' : 'erro'}" style="margin:0">⚠️ <span>${s.elegibilidade.elegivel
+          ? `<strong>Elegível ${esc(s.elegibilidade.texto)}.</strong>${s.elegibilidade.motivo_regra ? ` Pela regra: ${esc(s.elegibilidade.motivo_regra.toLowerCase())}` : ''}`
+          : `<strong>Hoje não é elegível:</strong> ${esc(s.elegibilidade.texto)}`}</span></div>` : ''}
         <h4 style="margin-top:.4rem">Documentos <small style="text-transform:none;letter-spacing:0;color:var(--texto-suave);font-weight:400">· exigidos: ${esc(s.documentos_exigidos.join(' + '))}</small></h4>
         ${faltando.length ? `<div class="alerta erro" style="margin:0">⚠️ Faltando: ${esc(faltando.join(', '))}</div>` : ''}
         <div class="anexos-lista">${s.anexos.map(a => `<a href="/api/anexos/${a.id}" target="_blank" rel="noopener">📎 ${esc(a.tipo_nome)} · ${esc(a.nome_original)}<small>${tamanhoArquivo(a.tamanho)}</small></a>`).join('')}</div>
