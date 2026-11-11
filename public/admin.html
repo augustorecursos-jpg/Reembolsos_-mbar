@@ -197,6 +197,14 @@
             <label class="rotulo">Prazo do documento (dias)<input class="campo" type="number" min="1" max="365" name="prazo_documento_dias"></label>
           </div>
           <p class="q-dica" id="dica-ciclo" style="margin:.6rem 0 0"></p>
+          <h3 style="margin-top:1.4rem">📑 Recadastramento anual <small>· Educacional e Creche/Babá</small></h3>
+          <div class="grade-campos" style="margin-top:.8rem">
+            <label class="check" style="align-self:end;padding-bottom:.7rem"><input type="checkbox" name="recad_ativo"> Exigir recadastramento anual</label>
+            <label class="rotulo">Início da campanha (bloqueio a partir de)<input class="campo" type="date" name="recad_inicio"></label>
+            <label class="rotulo">Ano de referência dos contratos<input class="campo" type="number" min="2020" max="2100" name="recad_ano"></label>
+          </div>
+          <p class="q-dica" style="margin:.6rem 0 0">A partir do início, Educacional e Creche/Babá ficam bloqueados para cada beneficiário até o RH aprovar os documentos do ano de referência
+            (Educacional e Creche: contrato com a escola/creche; Babá: contrato de trabalho, eSocial e carteira de trabalho). Para a próxima campanha, troque a data de início e o ano.</p>
           <h3 style="margin-top:1.4rem">💳 Benefícios, limites e verbas de folha</h3>
           <div class="tabela-wrap"><table class="tabela" id="tabela-config-beneficios"></table></div>
           <div class="linha-form"><button class="btn btn-laranja" type="submit" style="margin-left:auto">Salvar configurações</button></div>

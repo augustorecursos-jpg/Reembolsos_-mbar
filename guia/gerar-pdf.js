@@ -244,8 +244,9 @@ const faq = [
   ['Enviei depois do dia 10. E agora?', 'O portal recebe envios todos os dias: a partir do dia 11, o envio entra na competência do mês seguinte. O documento precisa ter até 60 dias.'],
   ['Não encontro um dependente ou um benefício.', 'O portal mostra apenas quem é elegível, conforme as regras e a base do RH. Se houver divergência, procure o RH.'],
   ['O valor passou do saldo. Posso enviar?', 'Não. Ajuste o valor solicitado para até o saldo disponível mostrado no formulário.'],
-  ['Posso enviar foto do documento?', 'Sim, em JPG ou PNG, desde que esteja legível e inteiro. PDF também é aceito. Até 10 MB por arquivo.'],
+  ['Posso enviar foto do documento?', 'Sim, em JPG, PNG ou PDF, legível e inteiro. Até 10 MB por arquivo.'],
   ['Minha solicitação foi reprovada.', 'Veja o motivo em “Minhas solicitações”, corrija o que foi indicado e envie uma nova solicitação dentro do prazo.'],
+  ['Recadastramento anual?', 'Educacional e Creche: envie todo ano o contrato no menu “Recadastramento anual”. Sem a aprovação do RH, fica bloqueado.'],
   ['Quando recebo o valor?', 'As solicitações aprovadas seguem para a folha de pagamento da competência.'],
 ];
 const p9 = folha('Dúvidas frequentes', 'AJUDA', `

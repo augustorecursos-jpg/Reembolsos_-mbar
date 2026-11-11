@@ -19,6 +19,12 @@ async function carregar() {
   const qtd = document.getElementById('qtd-analise');
   qtd.hidden = !emAnalise;
   qtd.textContent = emAnalise;
+  // Recadastramento anual: menu aparece para quem tem Educacional ou Creche/Babá; o número mostra as pendências.
+  const rc = estado.me.recadastro || {};
+  document.getElementById('menu-recadastro').hidden = !(rc.ativo && rc.total);
+  const qr = document.getElementById('qtd-recad');
+  qr.hidden = !(rc.ativo && rc.exigido && rc.pendentes);
+  qr.textContent = rc.pendentes || '';
   return true;
 }
 
@@ -127,6 +133,116 @@ function itemSolicitacao(s) {
     </button>`;
 }
 
+/** Faixa no painel sobre o recadastramento anual (antes do início, ou com pendências). */
+function avisoRecadastro(rc) {
+  if (!rc || !rc.ativo || !rc.total) return '';
+  if (!rc.exigido) {
+    return `<div class="alerta aviso aviso-recad">📑 <span><strong>Recadastramento anual ${rc.ano}:</strong> a partir de ${dataBR(rc.inicio)}, os reembolsos de Educacional e Creche/Babá só serão liberados após o envio e a aprovação do contrato atualizado. <a href="#/recadastro">Saiba mais →</a></span></div>`;
+  }
+  if (rc.pendentes) {
+    return `<div class="alerta erro aviso-recad">📑 <span><strong>Recadastramento anual ${rc.ano} pendente</strong> para ${rc.pendentes} beneficiário(s). Os reembolsos de Educacional e Creche/Babá estão bloqueados até o envio e a aprovação dos documentos. <a href="#/recadastro">Enviar documentos →</a></span></div>`;
+  }
+  if (rc.em_analise) return `<div class="alerta aviso aviso-recad">📑 <span><strong>Recadastramento anual ${rc.ano}:</strong> ${rc.em_analise} envio(s) em análise pelo RH. <a href="#/recadastro">Acompanhar →</a></span></div>`;
+  return '';
+}
+
+// ---------- Recadastramento anual ----------
+
+const ROTULOS_RECAD = { pendente: ['nao', 'Pendente de envio'], analise: ['pend', 'Em análise'], aprovado: ['ok', 'Aprovado'], reprovado: ['nao', 'Reprovado'] };
+
+async function renderRecadastro() {
+  conteudo.innerHTML = '<p class="carregando">Carregando…</p>';
+  const d = await api('/api/recadastro');
+  const c = d.campanha;
+  const docsDe = (mod) => d.modalidades[mod].documentos.map(x => d.documentos[x]);
+  conteudo.innerHTML = `
+    <h1 class="titulo-pagina">Recadastramento <em>anual ${c.ano}</em></h1>
+    <div class="cartao recad-intro">
+      <p>Para manter os reembolsos de <strong>Educacional</strong> e <strong>Creche/Babá</strong>, envie todo ano o contrato atualizado de cada beneficiário.
+        ${c.exigido
+          ? 'Enquanto o recadastramento não for <strong>aprovado pelo RH</strong>, as solicitações desse beneficiário ficam bloqueadas.'
+          : `A partir de <strong>${dataBR(c.inicio)}</strong>, as solicitações só serão liberadas após o envio e a aprovação dos documentos. O envio abre nessa data.`}</p>
+      <div class="recad-docs">
+        <div><strong>🎒 Educacional</strong><ul>${docsDe('escola').map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+        <div><strong>🧸 Creche</strong><ul>${docsDe('creche').map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+        <div><strong>🧸 Babá</strong><ul>${docsDe('baba').map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      </div>
+    </div>
+    <div class="recad-lista">
+      ${d.itens.map(i => cartaoRecadastro(i, d, c)).join('') || '<div class="cartao vazio-bloco"><span>📑</span>Nenhum beneficiário de Educacional ou Creche/Babá no seu cadastro.</div>'}
+    </div>`;
+  conteudo.querySelectorAll('form.form-recad').forEach(ligarFormRecadastro);
+}
+
+function cartaoRecadastro(i, d, c) {
+  const [classe, rotulo] = ROTULOS_RECAD[i.status];
+  const podeEnviar = c.exigido && (i.status === 'pendente' || i.status === 'reprovado');
+  const modsPossiveis = Object.entries(d.modalidades).filter(([, m]) => m.beneficio === i.beneficio);
+  let corpo = '';
+  if (i.status === 'aprovado') corpo = `<p class="q-dica">${i.origem === 'manual' ? 'Liberado pelo RH' : 'Documentos aprovados'} em ${dataHoraBR(i.analisado_em)}. As solicitações deste beneficiário estão liberadas.</p>`;
+  if (i.status === 'analise') corpo = `<p class="q-dica">Enviado em ${dataHoraBR(i.enviado_em)}. Aguardando a análise do RH.</p>`;
+  if (i.status === 'reprovado') corpo = `<div class="alerta erro" style="margin:0 0 .8rem">⚠️ <span><strong>Motivo da reprovação:</strong> ${esc(i.observacao_rh || '')}</span></div>`;
+  if (i.anexos.length && i.status !== 'reprovado') corpo += `<div class="anexos-lista" style="margin-top:.6rem">${i.anexos.map(a => `<a href="/api/recadastro/anexos/${a.id}" target="_blank" rel="noopener">📎 ${esc(a.tipo_nome)} · ${esc(a.nome_original)}</a>`).join('')}</div>`;
+  if (i.status === 'pendente' && !c.exigido) corpo = `<p class="q-dica">O envio abre em ${dataBR(c.inicio)}.</p>`;
+  if (podeEnviar) {
+    const campo = (tipo, nome, obrig) => `<label class="anexo-campo" data-doc="${tipo}"><input type="file" name="${tipo}" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" ${tipo === 'outro' ? 'multiple' : ''}>
+      <strong>📎 ${esc(nome)} ${obrig ? '<em>*</em>' : '<small>(opcional)</small>'}</strong><small data-nome>Clique ou arraste o arquivo aqui</small></label>`;
+    corpo += `
+      <form class="form-recad" novalidate>
+        <input type="hidden" name="beneficio" value="${i.beneficio}"><input type="hidden" name="beneficiario" value="${i.dependente_id}">
+        ${modsPossiveis.length > 1 ? `<div class="recad-mod"><span class="rotulo">O reembolso é de</span>${modsPossiveis.map(([k, m], n) => `<label class="check"><input type="radio" name="modalidade" value="${k}" ${n === 0 ? 'checked' : ''}> ${esc(m.nome)}</label>`).join('')}</div>`
+          : `<input type="hidden" name="modalidade" value="${modsPossiveis[0][0]}">`}
+        ${modsPossiveis.map(([k, m], n) => `<div class="anexos-grade" data-mod="${k}" ${n === 0 ? '' : 'hidden'}>${m.documentos.map(x => campo(x, d.documentos[x], true)).join('')}</div>`).join('')}
+        <div class="anexos-grade" style="margin-top:.8rem">${campo('outro', 'Outros documentos', false)}</div>
+        <label class="declaracao" style="margin-top:1rem"><input type="checkbox" name="declaracao" value="sim"><span>Declaro que os documentos enviados são verdadeiros e referem-se ao ano de ${c.ano}.</span></label>
+        <div class="recad-acoes"><span class="recad-erro" role="alert"></span><button class="btn btn-laranja" type="submit">${i.status === 'reprovado' ? 'Reenviar documentos' : 'Enviar documentos'}</button></div>
+      </form>`;
+  }
+  return `
+    <section class="cartao recad-item">
+      <header><span class="ic">${i.icone}</span><div><strong>${esc(i.nome)}</strong><small>${esc(i.beneficio_nome)} · ${esc(i.rotulo)}${i.idade ? ` · ${esc(i.idade)}` : ''}</small></div>
+        <span class="etiqueta ${classe}">${rotulo}</span></header>
+      ${corpo}
+    </section>`;
+}
+
+function ligarFormRecadastro(form) {
+  const erro = form.querySelector('.recad-erro');
+  form.addEventListener('change', (e) => {
+    if (e.target.name === 'modalidade') {
+      // Troca de creche para babá: mostra só os documentos da modalidade escolhida (e limpa os da outra).
+      form.querySelectorAll('[data-mod]').forEach(g => {
+        const ativo = g.dataset.mod === e.target.value;
+        g.hidden = !ativo;
+        if (!ativo) g.querySelectorAll('input[type=file]').forEach(inp => { inp.value = ''; inp.dispatchEvent(new Event('change', { bubbles: true })); });
+      });
+    } else if (e.target.type === 'file') {
+      const campo = e.target.closest('.anexo-campo');
+      const nomes = [...e.target.files].map(f => `${f.name} (${tamanhoArquivo(f.size)})`);
+      const grande = [...e.target.files].find(f => f.size > 10 * 1024 * 1024);
+      campo.classList.toggle('ok', nomes.length > 0 && !grande);
+      campo.querySelector('[data-nome]').textContent = grande ? `⚠️ ${grande.name} tem mais de 10 MB` : (nomes.join(', ') || 'Clique ou arraste o arquivo aqui');
+    }
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    erro.textContent = '';
+    const mod = (form.querySelector('[name=modalidade]:checked') || form.querySelector('[name=modalidade]')).value;
+    const faltando = [...form.querySelectorAll(`[data-mod="${mod}"] .anexo-campo`)].filter(l => !l.querySelector('input').files.length).map(l => l.querySelector('strong').textContent.replace('📎', '').replace('*', '').trim());
+    if (faltando.length) { erro.textContent = `Anexe: ${faltando.join(', ')}.`; return; }
+    if (!form.declaracao.checked) { erro.textContent = 'Confirme a declaração para enviar.'; return; }
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true;
+    try {
+      await api('/api/recadastro', { method: 'POST', body: new FormData(form) });
+      toast('Documentos enviados! O RH vai analisar e você será avisado.');
+      await carregar();
+      renderLateral();
+      await renderRecadastro();
+    } catch (err) { erro.textContent = err.message; btn.disabled = false; }
+  });
+}
+
 function renderPainel() {
   const { me } = estado;
   const p = me.periodo;
@@ -144,6 +260,7 @@ function renderPainel() {
       ${anelDias(p)}
     </section>
 
+    ${avisoRecadastro(me.recadastro)}
     <div class="indicadores">
       <div class="indicador destaque"><span class="ic">⏳</span><div><strong>${r.analise}</strong><span>em análise</span></div></div>
       <div class="indicador"><span class="ic">✅</span><div><strong>${r.aprovadas_ano}</strong><span>aprovadas em ${me.hoje.slice(0, 4)}</span></div></div>
@@ -223,6 +340,7 @@ function renderBeneficio(codigo) {
 
 /** Motivo curto para o beneficiário sem saldo (material escolar: fora da janela ou já solicitado nela). */
 function motivoSemSaldo(b, x) {
+  if (x.recadastro) return { pendente: 'recadastramento anual pendente', analise: 'recadastramento em análise', reprovado: 'recadastramento reprovado' }[x.recadastro];
   if (x.libera_em && !b.janela) return `limite usado · novo saldo em ${dataBR(x.libera_em)}`;
   if (!x.bloqueio || !b.janela) return 'limite atingido';
   return b.janela.aberta ? `já solicitado · próximo a partir de ${dataBR(b.janela.proxima_inicio)}` : `disponível a partir de ${dataBR(b.janela.proxima_inicio)}`;
@@ -567,6 +685,7 @@ function rotear() {
   if ((m = h.match(/^#\/beneficio\/(\w+)/))) { renderBeneficio(m[1]); titulo = beneficio(m[1])?.nome || titulo; }
   else if ((m = h.match(/^#\/nova(?:\/(\w+))?(?:\/(\d+))?/))) { renderNova(m[1], m[2]); titulo = 'Nova solicitação'; }
   else if (h.startsWith('#/minhas')) { renderMinhas(); titulo = 'Minhas solicitações'; }
+  else if (h.startsWith('#/recadastro')) { renderRecadastro().catch(err => toast(err.message, 'erro')); titulo = 'Recadastramento anual'; }
   else renderPainel();
   document.getElementById('titulo-barra').textContent = titulo;
   document.getElementById('lateral').classList.remove('aberta');

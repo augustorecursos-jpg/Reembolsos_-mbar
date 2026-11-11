@@ -46,6 +46,7 @@
     <p class="lateral-grupo">ANÁLISE</p>
     <button class="lateral-item ativo" data-aba="painel"><span class="ic">📈</span>Painel</button>
     <button class="lateral-item" data-aba="solicitacoes"><span class="ic">🧾</span>Solicitações<span class="qtd" id="qtd-pendentes" hidden></span></button>
+    <button class="lateral-item" data-aba="recadastro"><span class="ic">📑</span>Recadastramento<span class="qtd" id="qtd-recad" hidden></span></button>
     <button class="lateral-item" data-aba="folha"><span class="ic">💰</span>Folha de pagamento</button>
     <p class="lateral-grupo">CADASTRO</p>
     <button class="lateral-item" data-aba="colaboradores"><span class="ic">👥</span>Colaboradores</button>
@@ -125,6 +126,31 @@
       <!-- Colaboradores e acessos (montado por js/colaboradores.js) -->
       <section data-painel="colaboradores" id="area-colaboradores" hidden></section>
 
+      <!-- Recadastramento anual (Educacional e Creche/Babá) -->
+      <section data-painel="recadastro" hidden>
+        <div class="ind-cab">
+          <h1 class="titulo-pagina">Recadastramento <em>anual</em></h1>
+        </div>
+        <div id="rc-campanha"></div>
+        <div class="indicadores" id="rc-kpis"></div>
+        <div class="cartao" style="margin-top:1.2rem">
+          <div class="filtros filtros-sol" style="margin-left:0">
+            <select class="campo" id="rc-status" aria-label="Situação">
+              <option value="">Todas as situações</option><option value="analise" selected>Em análise</option><option value="pendente">Pendente de envio</option>
+              <option value="reprovado">Reprovado</option><option value="aprovado">Aprovado</option>
+            </select>
+            <select class="campo" id="rc-beneficio" aria-label="Benefício"><option value="">Educacional e Creche/Babá</option><option value="educacional">Educacional</option><option value="creche">Creche/Babá</option></select>
+            <input class="campo" id="rc-busca" placeholder="Colaborador, beneficiário, matrícula…" aria-label="Buscar">
+          </div>
+          <div class="cab-tabela" style="margin:1rem 0 .4rem">
+            <h3>📑 Beneficiários <small id="rc-resumo"></small></h3>
+            <div class="filtros"><button class="btn btn-claro btn-sm" id="rc-exportar">⬇ Exportar Excel</button></div>
+          </div>
+          <div class="tabela-wrap"><table class="tabela" id="rc-tabela"></table></div>
+          <p class="q-dica" style="margin:.8rem 0 0">“Liberar sem envio” aprova o recadastramento de quem entregou os documentos por outro meio (ex.: e-mail). Exige motivo e fica na auditoria.</p>
+        </div>
+      </section>
+
       <!-- Folha -->
       <section data-painel="folha" hidden>
         <div class="ind-cab">
@@ -154,6 +180,17 @@
       <button type="button" class="btn btn-claro btn-sm" data-fechar aria-label="Fechar">✕</button>
     </header>
     <div class="det-corpo" id="an-corpo"></div>
+  </dialog>
+  <dialog class="modal qr-modal" id="modal-liberar-recad">
+    <form id="form-liberar-recad">
+      <header><div><small>RECADASTRAMENTO ANUAL</small><h3 id="lib-titulo">Liberar sem envio</h3></div>
+        <button type="button" class="btn btn-claro btn-sm" data-fechar aria-label="Fechar">✕</button></header>
+      <div class="det-corpo">
+        <p id="lib-texto" style="margin:0"></p>
+        <label class="rotulo">Motivo <small>(fica na auditoria)</small><input class="campo" name="motivo" maxlength="300" required placeholder="Ex.: contrato recebido por e-mail em 12/12"></label>
+      </div>
+      <footer><span></span><button class="btn btn-laranja" type="submit">Liberar beneficiário</button></footer>
+    </form>
   </dialog>
   <!-- Troca da própria senha -->
   <dialog class="modal qr-modal" id="modal-senha">

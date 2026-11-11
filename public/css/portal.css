@@ -162,3 +162,23 @@ a.lateral-item { text-decoration: none; }
 .tabela { width: 100%; border-collapse: collapse; font-size: .88rem; }
 .tabela th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-suave); padding: .6rem; border-bottom: 2px solid var(--linha); white-space: nowrap; }
 .tabela td { padding: .6rem; border-bottom: 1px solid var(--fundo-2); }
+
+/* Recadastramento anual */
+.aviso-recad { margin: 1.2rem 0 0; }
+.aviso-recad a { font-weight: 700; color: inherit; }
+.qtd-alerta { background: var(--vermelho) !important; color: #fff !important; }
+.recad-intro p { margin: 0 0 .9rem; line-height: 1.55; }
+.recad-docs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.recad-docs > div { background: var(--fundo); border-radius: 12px; padding: .8rem 1rem; font-size: .88rem; }
+.recad-docs ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+.recad-lista { display: grid; gap: 1rem; margin-top: 1.2rem; }
+.recad-item header { display: flex; align-items: center; gap: .8rem; margin-bottom: .8rem; }
+.recad-item header > div { flex: 1; display: grid; }
+.recad-item header small { color: var(--texto-suave); }
+.recad-item header .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--destaque-suave); display: grid; place-items: center; font-size: 1.2rem; }
+.recad-mod { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: .8rem; }
+.recad-acoes { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; margin-top: 1rem; }
+.recad-erro { color: var(--vermelho); font-size: .9rem; font-weight: 600; }
+@media (max-width: 800px) { .recad-docs { grid-template-columns: 1fr; } }
+.recad-mod .check { display: flex; gap: .4rem; align-items: center; font-size: .92rem; font-weight: 600; }
+.recad-mod .check input { accent-color: var(--marinho); width: 17px; height: 17px; }

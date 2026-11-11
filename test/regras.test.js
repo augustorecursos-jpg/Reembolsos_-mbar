@@ -156,3 +156,15 @@ test('material escolar/uniforme: filhos de 7 a 17 anos, limites e janelas de fev
   assert.deepEqual(R.janelaDeSolicitacao('material', '2026-10', config), { aberta: false, meses: [2, 7], nomes: ['fevereiro', 'julho'], proxima: '2027-02' });
   assert.equal(R.janelaDeSolicitacao('educacional', '2026-10', config), null);
 });
+
+test('recadastramento anual: exigido para Educacional e Creche a partir do início da campanha', () => {
+  assert.deepEqual(config.recadastro, { ativo: true, inicio: '2026-12-11', ano: 2027 });
+  assert.equal(R.recadastroExigido('educacional', config, '2026-12-10'), false);
+  assert.equal(R.recadastroExigido('educacional', config, '2026-12-11'), true);
+  assert.equal(R.recadastroExigido('creche', config, '2027-03-01'), true);
+  assert.equal(R.recadastroExigido('medicamento', config, '2027-03-01'), false);
+  assert.equal(R.recadastroExigido('material', config, '2027-03-01'), false);
+  assert.equal(R.recadastroExigido('creche', { ...config, recadastro: { ...config.recadastro, ativo: false } }, '2027-03-01'), false);
+  assert.deepEqual(R.RECADASTRO.modalidades.baba.documentos, ['contrato_trabalho', 'esocial', 'ctps']);
+  assert.equal(R.mesclarConfiguracao({ recadastro: { inicio: '2027-12-11', ano: 2028 } }).recadastro.ativo, true);
+});

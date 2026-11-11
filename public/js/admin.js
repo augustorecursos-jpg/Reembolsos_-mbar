@@ -325,6 +325,9 @@ async function carregarRegras() {
   const f = document.getElementById('form-config');
   f.dia_fim.value = config.dia_fim;
   f.prazo_documento_dias.value = config.prazo_documento_dias;
+  f.recad_ativo.checked = Boolean(config.recadastro?.ativo);
+  f.recad_inicio.value = config.recadastro?.inicio || '';
+  f.recad_ano.value = config.recadastro?.ano || '';
   dicaCiclo();
   const campo = (cod, nome, valor, extra = '') => `<input class="campo" style="padding:.45rem .6rem;min-width:110px" data-b="${cod}" data-campo="${nome}" value="${esc(valor)}" ${extra}>`;
   document.getElementById('tabela-config-beneficios').innerHTML = `
@@ -351,6 +354,7 @@ document.getElementById('form-config').addEventListener('submit', async (e) => {
   const f = e.target;
   const corpo = {
     dia_fim: Number(f.dia_fim.value), prazo_documento_dias: Number(f.prazo_documento_dias.value), beneficios: {},
+    recadastro: { ativo: f.recad_ativo.checked, inicio: f.recad_inicio.value, ano: Number(f.recad_ano.value) },
   };
   f.querySelectorAll('[data-b]').forEach(el => {
     corpo.beneficios[el.dataset.b] = corpo.beneficios[el.dataset.b] || {};

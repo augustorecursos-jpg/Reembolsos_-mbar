@@ -181,6 +181,37 @@ CREATE TABLE IF NOT EXISTS excecoes (
 );
 `);
 
+// Recadastramento anual (Educacional e Creche/Babá): documentos do ano enviados pelo colaborador e analisados pelo RH.
+// Cada envio é uma linha (o histórico de reenvios fica guardado); vale o mais recente de cada beneficiário/benefício/ano.
+db.exec(`
+CREATE TABLE IF NOT EXISTS recadastros (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  cpf            TEXT NOT NULL REFERENCES colaboradores(cpf),
+  dependente_id  INTEGER REFERENCES dependentes(id),   -- NULL = o próprio titular (exceção)
+  beneficiario_nome TEXT NOT NULL,
+  beneficio      TEXT NOT NULL,                       -- educacional | creche
+  ano            INTEGER NOT NULL,                    -- ano de referência da campanha
+  modalidade     TEXT,                                -- escola | creche | baba
+  status         TEXT NOT NULL DEFAULT 'analise',     -- analise | aprovado | reprovado
+  origem         TEXT NOT NULL DEFAULT 'portal',      -- portal | manual (liberado pelo RH sem envio)
+  observacao_rh  TEXT,
+  enviado_em     TEXT NOT NULL DEFAULT (datetime('now')),
+  analisado_em   TEXT,
+  analisado_por  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_recad ON recadastros (cpf, beneficio, ano, dependente_id);
+CREATE TABLE IF NOT EXISTS recadastro_anexos (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  recadastro_id INTEGER NOT NULL REFERENCES recadastros(id) ON DELETE CASCADE,
+  tipo          TEXT NOT NULL,
+  arquivo       TEXT NOT NULL,
+  nome_original TEXT,
+  mime          TEXT,
+  tamanho       INTEGER,
+  criado_em     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
 // Registro das ações de quem usa a Área do RH e a Administração.
 db.exec(`
 CREATE TABLE IF NOT EXISTS auditoria (

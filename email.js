@@ -68,4 +68,33 @@ function avisar(tipo, sol, destinatario) {
     .catch(e => console.error(`[e-mail] Falha ao enviar para ${destinatario}: ${e.message}`));
 }
 
-module.exports = { avisar, emailAtivo };
+const ASSUNTOS_RECADASTRO = {
+  recebido: 'Recadastramento anual recebido',
+  aprovado: 'Recadastramento anual aprovado',
+  reprovado: 'Recadastramento anual reprovado',
+};
+
+/** Avisos do recadastramento anual (envio, aprovação e reprovação dos documentos). */
+function avisarRecadastro(tipo, rec, destinatario) {
+  if (!destinatario || !rec) return;
+  const linhas = [
+    ['Benefício', BENEFICIOS[rec.beneficio]?.nome || rec.beneficio],
+    ['Beneficiário', rec.beneficiario_nome],
+    ['Ano de referência', String(rec.ano)],
+  ];
+  let rodape = 'Os documentos serão analisados pelo RH. Os reembolsos deste beneficiário serão liberados após a aprovação.';
+  if (tipo === 'aprovado') rodape = 'Documentos aprovados: as solicitações de reembolso deste beneficiário estão liberadas.';
+  if (tipo === 'reprovado') {
+    linhas.push(['Motivo', rec.observacao_rh || '']);
+    rodape = 'Envie novamente os documentos pelo portal, em “Recadastramento anual”.';
+  }
+  const assunto = `${ASSUNTOS_RECADASTRO[tipo]} · ${rec.beneficiario_nome}`;
+  if (!transporte) {
+    console.log(`[e-mail desativado] ${destinatario}: ${assunto}`);
+    return;
+  }
+  transporte.sendMail({ from: REMETENTE, to: destinatario, subject: assunto, html: modelo(ASSUNTOS_RECADASTRO[tipo], linhas, rodape) })
+    .catch(e => console.error(`[e-mail] Falha ao enviar para ${destinatario}: ${e.message}`));
+}
+
+module.exports = { avisar, avisarRecadastro, emailAtivo };

@@ -107,6 +107,32 @@ const CODIGOS = Object.keys(BENEFICIOS);
 
 const NIVEIS_ENSINO = ['Ensino fundamental', 'Ensino médio', 'Ensino médio técnico'];
 
+/**
+ * Recadastramento anual (Educacional e Creche/Babá): a partir da data de início da campanha, o reembolso
+ * de cada beneficiário só é liberado depois que o RH aprova os documentos do ano de referência.
+ */
+const RECADASTRO = {
+  beneficios: ['educacional', 'creche'],
+  modalidades: {
+    escola: { nome: 'Escola', beneficio: 'educacional', documentos: ['contrato_escola'] },
+    creche: { nome: 'Creche', beneficio: 'creche', documentos: ['contrato_creche'] },
+    baba: { nome: 'Babá', beneficio: 'creche', documentos: ['contrato_trabalho', 'esocial', 'ctps'] },
+  },
+  documentos: {
+    contrato_escola: 'Contrato entre a escola e o responsável legal (ano vigente)',
+    contrato_creche: 'Contrato entre a creche e o responsável legal (ano vigente)',
+    contrato_trabalho: 'Contrato de trabalho da babá',
+    esocial: 'Comprovante de envio ao eSocial',
+    ctps: 'Carteira de trabalho (CTPS) da babá',
+  },
+};
+
+/** O recadastramento do ano é exigido para este benefício nesta data? */
+function recadastroExigido(codigo, config, hoje) {
+  const r = config.recadastro;
+  return Boolean(r && r.ativo && r.inicio && RECADASTRO.beneficios.includes(codigo) && hoje >= r.inicio);
+}
+
 /** Filiais/unidades aceitas no cadastro manual do RH (lista suspensa; evita erros de digitação). */
 const UNIDADES = [
   'FLUXUS',
@@ -176,6 +202,8 @@ function configuracaoPadrao() {
     prazo_documento_dias: 60,
     portal_suspenso: false, // bloqueia o acesso de todos os colaboradores (ex.: manutenção)
     mensagem_suspensao: '',
+    // Recadastramento anual: a partir de "inicio", Educacional e Creche/Babá exigem documentos aprovados do "ano".
+    recadastro: { ativo: true, inicio: '2026-12-11', ano: 2027 },
     beneficios: Object.fromEntries(CODIGOS.map(c => {
       const b = BENEFICIOS[c];
       return [c, {
@@ -195,6 +223,7 @@ function configuracaoPadrao() {
 function mesclarConfiguracao(salva) {
   const padrao = configuracaoPadrao();
   const c = { ...padrao, ...(salva || {}) };
+  c.recadastro = { ...padrao.recadastro, ...((salva && salva.recadastro) || {}) };
   c.beneficios = Object.fromEntries(CODIGOS.map(k => [k, { ...padrao.beneficios[k], ...((salva && salva.beneficios && salva.beneficios[k]) || {}) }]));
   return c;
 }
@@ -474,7 +503,7 @@ function formatarReais(centavos) {
 }
 
 module.exports = {
-  FUSO, PARENTESCOS, DOCUMENTOS, BENEFICIOS, CODIGOS, NIVEIS_ENSINO, UNIDADES,
+  FUSO, PARENTESCOS, DOCUMENTOS, BENEFICIOS, CODIGOS, NIVEIS_ENSINO, UNIDADES, RECADASTRO, recadastroExigido,
   configuracaoPadrao, mesclarConfiguracao,
   hojeISO, normalizarData, diasEntre, somarMeses, idadeEm, mesesDeIdade, competenciaDe, cicloDaCompetencia, formatarCompetencia,
   situacaoPeriodo, validarDataDocumento,

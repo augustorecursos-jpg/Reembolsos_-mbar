@@ -7,7 +7,7 @@ const express = require('express');
 const multer = require('multer');
 const { db, DATA_DIR, ANEXOS_DIR, gerarHash, conferirSenha, garantirAdministrador } = require('./db');
 const R = require('./regras');
-const { avisar, emailAtivo } = require('./email');
+const { avisar, avisarRecadastro, emailAtivo } = require('./email');
 
 const PORT = Number(process.env.PORT) || 3001;
 const PRODUCAO = process.env.NODE_ENV === 'production';
@@ -238,6 +238,58 @@ function elegivel(codigo, colab, dep, hoje, config, excecoes) {
   return R.elegibilidade(codigo, colab, dep, hoje, config, exc);
 }
 
+// ---------- Recadastramento anual (Educacional e Creche/Babá) ----------
+
+/** Envio mais recente do recadastramento deste beneficiário/benefício/ano (ou null). */
+function recadastroAtual(cpf, depId, beneficio, ano) {
+  return db.prepare('SELECT * FROM recadastros WHERE cpf = ? AND dependente_id IS ? AND beneficio = ? AND ano = ? ORDER BY id DESC LIMIT 1')
+    .get(cpf, depId ?? null, beneficio, ano) || null;
+}
+
+/** Bloqueio por recadastramento não aprovado (null = liberado ou não exigido). */
+function bloqueioRecadastro(cpf, depId, beneficio, hoje, config) {
+  if (!R.recadastroExigido(beneficio, config, hoje)) return null;
+  const ano = config.recadastro.ano;
+  const r = recadastroAtual(cpf, depId, beneficio, ano);
+  if (r && r.status === 'aprovado') return null;
+  if (!r) return { status: 'pendente', texto: `Recadastramento anual ${ano} pendente: envie o contrato atualizado e os documentos em “Recadastramento anual” para liberar os reembolsos.` };
+  if (r.status === 'analise') return { status: 'analise', texto: `Recadastramento anual ${ano} em análise pelo RH. Os reembolsos serão liberados após a aprovação dos documentos.` };
+  return { status: 'reprovado', texto: `Recadastramento anual ${ano} reprovado${r.observacao_rh ? `: ${r.observacao_rh.replace(/[.\s]+$/, '')}` : ''}. Envie novamente os documentos em “Recadastramento anual”.` };
+}
+
+const anexosRecadastro = (id) => db.prepare('SELECT id, tipo, nome_original, mime, tamanho FROM recadastro_anexos WHERE recadastro_id = ? ORDER BY id').all(id)
+  .map(a => ({ ...a, tipo_nome: R.RECADASTRO.documentos[a.tipo] || 'Outro documento' }));
+
+/** Quem precisa de recadastramento no ano: os beneficiários elegíveis a Educacional e Creche/Babá, com a situação de cada um. */
+function itensRecadastro(colab, hoje, config, comAnexos = true) {
+  const ano = config.recadastro.ano;
+  const deps = dependentesDe(colab.cpf);
+  const exc = excecoesDe(colab.cpf, hoje);
+  const itens = [];
+  for (const beneficio of R.RECADASTRO.beneficios) {
+    if (!config.beneficios[beneficio]?.ativo) continue;
+    for (const d of [null, ...deps]) {
+      if (!elegivel(beneficio, colab, d, hoje, config, exc).elegivel) continue;
+      const r = recadastroAtual(colab.cpf, d ? d.id : null, beneficio, ano);
+      itens.push({
+        beneficio, beneficio_nome: R.BENEFICIOS[beneficio].nome, icone: R.BENEFICIOS[beneficio].icone,
+        dependente_id: d ? d.id : 0, nome: d ? d.nome : colab.nome, rotulo: d ? (R.PARENTESCOS[d.parentesco] || d.parentesco) : 'Titular',
+        data_nascimento: d ? d.data_nascimento : null, idade: d ? textoIdade(d.data_nascimento, hoje) : null,
+        status: r ? r.status : 'pendente', id: r ? r.id : null, modalidade: r ? r.modalidade : null, origem: r ? r.origem : null,
+        observacao_rh: r ? r.observacao_rh : null, enviado_em: r ? r.enviado_em : null, analisado_em: r ? r.analisado_em : null,
+        anexos: r && comAnexos ? anexosRecadastro(r.id) : [],
+      });
+    }
+  }
+  return itens;
+}
+
+/** Situação da campanha para as telas: ativa, data de início, ano, se já é exigida e se o envio está aberto. */
+function campanhaRecadastro(config, hoje) {
+  const rc = config.recadastro;
+  return { ativo: Boolean(rc.ativo), inicio: rc.inicio, ano: rc.ano, exigido: Boolean(rc.ativo && rc.inicio && hoje >= rc.inicio) };
+}
+
 /** "4 meses", "2 anos e 3 meses" — idade de um dependente numa data. */
 function textoIdade(nascimento, ref) {
   if (!nascimento) return null;
@@ -270,8 +322,11 @@ function beneficiosDoColaborador(colab, hoje, config) {
       .filter(p => elegivel(codigo, colab, p.dep, hoje, config, excecoes).elegivel)
       .map(p => {
         const s = saldo(colab, codigo, p.dep ? p.dep.id : null, competencia, hoje, config);
+        // Educacional e Creche/Babá: sem recadastramento anual aprovado, o beneficiário fica bloqueado.
+        const rec = bloqueioRecadastro(colab.cpf, p.dep ? p.dep.id : null, codigo, hoje, config);
         return {
-          id: p.id, nome: p.nome, tipo: p.tipo, rotulo: p.rotulo, limite: s.limite, usado: s.usado, disponivel: s.disponivel, bloqueio: s.bloqueio,
+          id: p.id, nome: p.nome, tipo: p.tipo, rotulo: p.rotulo, limite: s.limite, usado: s.usado,
+          disponivel: rec ? 0 : s.disponivel, bloqueio: rec ? rec.texto : s.bloqueio, recadastro: rec ? rec.status : null,
           libera_em: s.libera_em,
           // Pagamentos anteriores ao portal que ainda contam no saldo (só para exibição ao colaborador).
           historico: s.historico ? historicoNoLimite({ cpf: colab.cpf, beneficio: codigo, dependenteId: p.dep ? p.dep.id : null, competencia, janela: s.janela, familia: false }, true) : [],
@@ -409,6 +464,12 @@ app.get('/api/me', exigirColaborador, (req, res) => {
     prazo_documento_dias: config.prazo_documento_dias,
     niveis_ensino: R.NIVEIS_ENSINO,
     beneficios: beneficiosDoColaborador(c, hoje, config),
+    recadastro: (() => {
+      const camp = campanhaRecadastro(config, hoje);
+      if (!camp.ativo) return camp;
+      const itens = itensRecadastro(c, hoje, config, false);
+      return { ...camp, total: itens.length, pendentes: itens.filter(i => i.status === 'pendente' || i.status === 'reprovado').length, em_analise: itens.filter(i => i.status === 'analise').length };
+    })(),
     resumo: { analise: resumo.analise || 0, aprovadas_ano: resumo.aprovadas_ano || 0, reprovadas_ano: resumo.reprovadas_ano || 0, valor_ano: resumo.valor_ano },
     email_ativo: emailAtivo(),
   });
@@ -453,6 +514,8 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
   }
   const eleg = elegivel(beneficio, colab, dep, hoje, config);
   if (!eleg.elegivel) return falhar(`Solicitação não permitida: ${eleg.motivo}`);
+  const rec = bloqueioRecadastro(colab.cpf, dep ? dep.id : null, beneficio, hoje, config);
+  if (rec) return falhar(rec.texto);
 
   const dataDoc = R.normalizarData(req.body.data_documento);
   const erroData = R.validarDataDocumento(dataDoc, hoje, config.prazo_documento_dias);
@@ -520,6 +583,80 @@ app.post('/api/solicitacoes', exigirColaborador, receberAnexos, (req, res) => {
 /** Anexo: acessível ao próprio colaborador ou ao RH. */
 app.get('/api/anexos/:id', (req, res) => {
   const anexo = db.prepare('SELECT a.*, s.cpf FROM anexos a JOIN solicitacoes s ON s.id = a.solicitacao_id WHERE a.id = ?').get(Number(req.params.id));
+  if (!anexo) return res.status(404).json({ erro: 'Documento não encontrado.' });
+  const colab = verificar(lerCookies(req).sess_colab);
+  if (!sessaoRh(req) && !(colab && colab.cpf === anexo.cpf)) return res.status(401).json({ erro: 'Acesso não autorizado.' });
+  const arquivo = path.join(ANEXOS_DIR, path.basename(anexo.arquivo));
+  if (!fs.existsSync(arquivo)) return res.status(404).json({ erro: 'Arquivo não encontrado.' });
+  const nome = encodeURIComponent(anexo.nome_original || path.basename(arquivo));
+  res.setHeader('Content-Disposition', `${req.query.baixar ? 'attachment' : 'inline'}; filename*=UTF-8''${nome}`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.type(anexo.mime || 'application/octet-stream').sendFile(arquivo);
+});
+
+// ===== Recadastramento anual (colaborador) =====
+
+const CAMPOS_RECADASTRO = [...Object.keys(R.RECADASTRO.documentos), 'outro'];
+const receberRecadastro = upload.fields(CAMPOS_RECADASTRO.map(name => ({ name, maxCount: 3 })));
+
+app.get('/api/recadastro', exigirColaborador, (req, res) => {
+  const config = configuracao();
+  const hoje = R.hojeISO();
+  res.json({
+    campanha: campanhaRecadastro(config, hoje),
+    modalidades: R.RECADASTRO.modalidades,
+    documentos: R.RECADASTRO.documentos,
+    itens: config.recadastro.ativo ? itensRecadastro(req.colab, hoje, config) : [],
+  });
+});
+
+app.post('/api/recadastro', exigirColaborador, receberRecadastro, (req, res) => {
+  const colab = req.colab;
+  const config = configuracao();
+  const hoje = R.hojeISO();
+  const files = req.files || {};
+  const falhar = (msg, status = 400) => { apagarArquivos(files); res.status(status).json({ erro: msg }); };
+  const camp = campanhaRecadastro(config, hoje);
+  if (!camp.ativo) return falhar('O recadastramento anual não está ativo.');
+  if (!camp.exigido) return falhar(`O envio do recadastramento ${camp.ano} abre em ${dataBr(camp.inicio)}.`);
+  const beneficio = String(req.body.beneficio || '');
+  if (!R.RECADASTRO.beneficios.includes(beneficio)) return falhar('Selecione o benefício.');
+  const depId = Number(req.body.beneficiario) || 0;
+  let dep = null;
+  if (depId) {
+    dep = dependentesDe(colab.cpf).find(d => d.id === depId);
+    if (!dep) return falhar('Beneficiário não encontrado na sua base de dependentes.');
+  }
+  if (!elegivel(beneficio, colab, dep, hoje, config).elegivel) return falhar('Este beneficiário não é elegível a este benefício.');
+  const modalidade = String(req.body.modalidade || '');
+  const mod = R.RECADASTRO.modalidades[modalidade];
+  if (!mod || mod.beneficio !== beneficio) return falhar(beneficio === 'creche' ? 'Informe se é creche ou babá.' : 'Modalidade inválida.');
+  const atual = recadastroAtual(colab.cpf, dep ? dep.id : null, beneficio, camp.ano);
+  if (atual && atual.status === 'analise') return falhar('Os documentos deste beneficiário já foram enviados e estão em análise pelo RH.');
+  if (atual && atual.status === 'aprovado') return falhar(`O recadastramento ${camp.ano} deste beneficiário já está aprovado.`);
+  const faltando = mod.documentos.filter(d => !(files[d] && files[d].length));
+  if (faltando.length) return falhar(`Anexe os documentos obrigatórios: ${faltando.map(d => R.RECADASTRO.documentos[d]).join(', ')}.`);
+  if (req.body.declaracao !== 'sim') return falhar('Confirme a declaração antes de enviar.');
+  let id;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    id = Number(db.prepare(`INSERT INTO recadastros (cpf, dependente_id, beneficiario_nome, beneficio, ano, modalidade, status, origem)
+      VALUES (?, ?, ?, ?, ?, ?, 'analise', 'portal')`).run(colab.cpf, dep ? dep.id : null, dep ? dep.nome : colab.nome, beneficio, camp.ano, modalidade).lastInsertRowid);
+    const ins = db.prepare('INSERT INTO recadastro_anexos (recadastro_id, tipo, arquivo, nome_original, mime, tamanho) VALUES (?, ?, ?, ?, ?, ?)');
+    for (const tipo of CAMPOS_RECADASTRO) for (const f of files[tipo] || []) ins.run(id, tipo, f.filename, f.originalname, f.mimetype, f.size);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    apagarArquivos(files);
+    throw e;
+  }
+  avisarRecadastro('recebido', db.prepare('SELECT * FROM recadastros WHERE id = ?').get(id), colab.email);
+  res.status(201).json({ ok: true, id });
+});
+
+/** Documento do recadastramento: acessível ao próprio colaborador ou ao RH. */
+app.get('/api/recadastro/anexos/:id', (req, res) => {
+  const anexo = db.prepare('SELECT a.*, r.cpf FROM recadastro_anexos a JOIN recadastros r ON r.id = a.recadastro_id WHERE a.id = ?').get(Number(req.params.id));
   if (!anexo) return res.status(404).json({ erro: 'Documento não encontrado.' });
   const colab = verificar(lerCookies(req).sess_colab);
   if (!sessaoRh(req) && !(colab && colab.cpf === anexo.cpf)) return res.status(401).json({ erro: 'Acesso não autorizado.' });
@@ -808,6 +945,85 @@ app.get('/api/admin/colaboradores', exigirRh, (_req, res) => {
     };
   });
   res.json(lista);
+});
+
+// -- Recadastramento anual (análise do RH) --
+
+/** Todos os itens do ano: quem enviou (com a situação) e quem ainda não enviou (pendente). */
+app.get('/api/admin/recadastros', exigirRh, (req, res) => {
+  const config = configuracao();
+  const hoje = R.hojeISO();
+  const camp = campanhaRecadastro(config, hoje);
+  const itens = [];
+  if (camp.ativo) {
+    for (const c of db.prepare('SELECT * FROM colaboradores WHERE ativo = 1 AND excluido_em IS NULL ORDER BY nome').all()) {
+      c.elegibilidade = JSON.parse(c.elegibilidade || '{}');
+      for (const it of itensRecadastro(c, hoje, config, false)) {
+        itens.push({ ...it, cpf: c.cpf, titular: c.nome, matricula: c.matricula, unidade: c.unidade, email: c.email, bloqueado: c.bloqueado });
+      }
+    }
+  }
+  const conta = (st) => itens.filter(i => i.status === st).length;
+  res.json({ campanha: camp, resumo: { total: itens.length, pendente: conta('pendente'), analise: conta('analise'), aprovado: conta('aprovado'), reprovado: conta('reprovado') }, itens });
+});
+
+app.get('/api/admin/recadastros/:id', exigirRh, (req, res) => {
+  const r = db.prepare('SELECT * FROM recadastros WHERE id = ?').get(Number(req.params.id));
+  if (!r) return res.status(404).json({ erro: 'Recadastramento não encontrado.' });
+  const c = db.prepare('SELECT cpf, nome, matricula, unidade, email FROM colaboradores WHERE cpf = ?').get(r.cpf) || {};
+  const dep = r.dependente_id ? db.prepare('SELECT * FROM dependentes WHERE id = ?').get(r.dependente_id) : null;
+  const hoje = R.hojeISO();
+  res.json({
+    ...r, colaborador: c, beneficio_nome: R.BENEFICIOS[r.beneficio]?.nome, modalidade_nome: R.RECADASTRO.modalidades[r.modalidade]?.nome || null,
+    documentos_exigidos: r.modalidade ? R.RECADASTRO.modalidades[r.modalidade].documentos.map(d => R.RECADASTRO.documentos[d]) : [],
+    rotulo: dep ? (R.PARENTESCOS[dep.parentesco] || dep.parentesco) : 'Titular',
+    data_nascimento: dep ? dep.data_nascimento : null, idade: dep ? textoIdade(dep.data_nascimento, hoje) : null,
+    anexos: anexosRecadastro(r.id),
+    // Envios anteriores do mesmo beneficiário (reenvios e anos anteriores).
+    historico: db.prepare(`SELECT id, ano, modalidade, status, origem, observacao_rh, enviado_em, analisado_em, analisado_por FROM recadastros
+      WHERE cpf = ? AND dependente_id IS ? AND beneficio = ? AND id <> ? ORDER BY id DESC`).all(r.cpf, r.dependente_id, r.beneficio, r.id),
+  });
+});
+
+app.post('/api/admin/recadastros/:id/decidir', exigirRh, (req, res) => {
+  const r = db.prepare('SELECT * FROM recadastros WHERE id = ?').get(Number(req.params.id));
+  if (!r) return res.status(404).json({ erro: 'Recadastramento não encontrado.' });
+  const decisao = req.body?.decisao;
+  if (!['aprovado', 'reprovado'].includes(decisao)) return res.status(400).json({ erro: 'Decisão inválida.' });
+  const observacao = String(req.body?.observacao || '').trim().slice(0, 1000);
+  if (decisao === 'reprovado' && !observacao) return res.status(400).json({ erro: 'Informe o motivo da reprovação (o colaborador verá este texto).' });
+  // Só o envio mais recente pode ser decidido (os anteriores ficam como histórico).
+  const ultimo = recadastroAtual(r.cpf, r.dependente_id, r.beneficio, r.ano);
+  if (ultimo && ultimo.id !== r.id) return res.status(400).json({ erro: 'Há um envio mais recente deste beneficiário. Analise o último envio.' });
+  db.prepare("UPDATE recadastros SET status = ?, observacao_rh = ?, analisado_em = datetime('now'), analisado_por = ? WHERE id = ?")
+    .run(decisao, observacao || null, req.rh.nome, r.id);
+  auditar(req, decisao === 'aprovado' ? 'Aprovou recadastramento anual' : 'Reprovou recadastramento anual',
+    `${R.BENEFICIOS[r.beneficio].curto} ${r.ano} · ${r.beneficiario_nome} · CPF ${r.cpf}${observacao ? ` · ${observacao}` : ''}`);
+  const atualizado = db.prepare('SELECT * FROM recadastros WHERE id = ?').get(r.id);
+  avisarRecadastro(decisao, atualizado, db.prepare('SELECT email FROM colaboradores WHERE cpf = ?').get(r.cpf)?.email);
+  res.json({ ok: true });
+});
+
+/** Libera sem envio pelo portal (ex.: documentos recebidos por e-mail), com motivo. */
+app.post('/api/admin/recadastros/liberar', exigirRh, (req, res) => {
+  const config = configuracao();
+  const cpf = normalizarCpf(req.body?.cpf);
+  const c = colaboradorPorCpf(cpf);
+  if (!c) return res.status(404).json({ erro: 'Colaborador não encontrado.' });
+  const beneficio = String(req.body?.beneficio || '');
+  if (!R.RECADASTRO.beneficios.includes(beneficio)) return res.status(400).json({ erro: 'Benefício inválido.' });
+  const motivo = String(req.body?.motivo || '').trim().slice(0, 300);
+  if (!motivo) return res.status(400).json({ erro: 'Informe o motivo da liberação (ex.: documentos recebidos por e-mail).' });
+  const depId = Number(req.body?.dependente_id) || null;
+  const dep = depId && db.prepare('SELECT * FROM dependentes WHERE id = ? AND cpf_titular = ?').get(depId, cpf);
+  if (depId && !dep) return res.status(400).json({ erro: 'Dependente não encontrado.' });
+  const ano = config.recadastro.ano;
+  const atual = recadastroAtual(cpf, depId, beneficio, ano);
+  if (atual && atual.status === 'aprovado') return res.status(400).json({ erro: 'Este beneficiário já está com o recadastramento aprovado.' });
+  db.prepare(`INSERT INTO recadastros (cpf, dependente_id, beneficiario_nome, beneficio, ano, modalidade, status, origem, observacao_rh, analisado_em, analisado_por)
+    VALUES (?, ?, ?, ?, ?, NULL, 'aprovado', 'manual', ?, datetime('now'), ?)`).run(cpf, depId, dep ? dep.nome : c.nome, beneficio, ano, motivo, req.rh.nome);
+  auditar(req, 'Liberou recadastramento anual sem envio pelo portal', `${R.BENEFICIOS[beneficio].curto} ${ano} · ${dep ? dep.nome : c.nome} · CPF ${cpf} · ${motivo}`);
+  res.status(201).json({ ok: true });
 });
 
 // -- Exceções de elegibilidade (somente administrador) --
@@ -1331,6 +1547,14 @@ app.put('/api/admin/configuracoes', exigirAdmin, (req, res) => {
     prazo_documento_dias: inteiro(e.prazo_documento_dias, 1, 365, atual.prazo_documento_dias),
     portal_suspenso: e.portal_suspenso === undefined ? atual.portal_suspenso : Boolean(e.portal_suspenso),
     mensagem_suspensao: String(e.mensagem_suspensao ?? atual.mensagem_suspensao ?? '').trim().slice(0, 300),
+    recadastro: (() => {
+      const rc = e.recadastro || {};
+      return {
+        ativo: rc.ativo === undefined ? atual.recadastro.ativo : Boolean(rc.ativo),
+        inicio: rc.inicio === undefined ? atual.recadastro.inicio : (R.normalizarData(rc.inicio) || atual.recadastro.inicio),
+        ano: inteiro(rc.ano, 2020, 2100, atual.recadastro.ano),
+      };
+    })(),
     beneficios: {},
   };
   for (const c of R.CODIGOS) {
@@ -1348,6 +1572,7 @@ app.put('/api/admin/configuracoes', exigirAdmin, (req, res) => {
   }
   db.prepare("INSERT INTO configuracoes (chave, valor) VALUES ('portal', ?) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor").run(JSON.stringify(nova));
   if (nova.portal_suspenso !== atual.portal_suspenso) auditar(req, nova.portal_suspenso ? 'Suspendeu o portal para os colaboradores' : 'Reativou o portal para os colaboradores', nova.mensagem_suspensao || null);
+  if (JSON.stringify(nova.recadastro) !== JSON.stringify(atual.recadastro)) auditar(req, 'Alterou o recadastramento anual', `${nova.recadastro.ativo ? 'Ativo' : 'Desativado'} · início ${dataBr(nova.recadastro.inicio)} · ano ${nova.recadastro.ano}`);
   if (e.dia_fim !== undefined || e.beneficios !== undefined) auditar(req, 'Alterou configurações', `Ciclo: dia ${nova.dia_fim + 1} a ${nova.dia_fim} do mês seguinte · prazo ${nova.prazo_documento_dias} dias`);
   res.json({ ok: true, config: nova });
 });
