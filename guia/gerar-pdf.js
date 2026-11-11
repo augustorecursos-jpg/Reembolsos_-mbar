@@ -157,7 +157,7 @@ const linhasBeneficios = [
   ['educacional', `até ${reais(73363)} (sucedidos) ou ${reais(60000)} por dependente/mês`, 'Filhos, enteados e netos com tutela, de 7 a 17 anos, no ensino fundamental, médio ou técnico.', 'Boleto ou recibo + comprovante de pagamento'],
   ['creche', `até ${reais(110317)} (sucedidos) ou ${reais(80000)} por dependente/mês`, 'Filhos, enteados e netos com tutela, de 6 meses a 6 anos.', 'Boleto ou recibo + comprovante de pagamento'],
   ['oculos', `até ${reais(150000)} por pessoa a cada 18 meses`, 'Titular e cônjuge.', 'Receita médica + nota fiscal'],
-  ['material', `até ${reais(146726)} (sucedidos) ou ${reais(120000)} por dependente, em fev. e jul.`, 'Filhos de 7 a 17 anos. Um por filho em cada competência (envios de 11/01 a 10/02 e de 11/06 a 10/07).', 'Nota fiscal'],
+  ['material', `até ${reais(146726)} (sucedidos) ou ${reais(120000)} por dependente, em fev. e jul.`, 'Filhos de 7 a 17 anos. Um por filho em cada competência (envios de 11/01 a 10/02 e de 11/06 a 10/07).', 'Nota fiscal + lista de material'],
 ];
 const p4 = folha('Seus benefícios e limites', 'PASSO 3', `
   <p class="lead">Clique em um benefício no menu para ver as regras, os beneficiários elegíveis e o saldo de cada um.</p>

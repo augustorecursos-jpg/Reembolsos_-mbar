@@ -155,6 +155,8 @@ test('material escolar/uniforme: filhos de 7 a 17 anos, limites e janelas de fev
   assert.equal(R.janelaDeSolicitacao('material', '2027-07', config).proxima, '2028-02');
   assert.deepEqual(R.janelaDeSolicitacao('material', '2026-10', config), { aberta: false, meses: [2, 7], nomes: ['fevereiro', 'julho'], proxima: '2027-02' });
   assert.equal(R.janelaDeSolicitacao('educacional', '2026-10', config), null);
+  assert.deepEqual(R.BENEFICIOS.material.documentos, ['nota_fiscal', 'lista_material']);
+  assert.equal(R.DOCUMENTOS.lista_material, 'Lista de material escolar');
 });
 
 test('recadastramento anual: exigido para Educacional e Creche a partir do início da campanha', () => {

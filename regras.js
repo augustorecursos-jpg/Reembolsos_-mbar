@@ -21,6 +21,7 @@ const DOCUMENTOS = {
   nota_fiscal: 'Nota fiscal',
   boleto: 'Boleto ou recibo',
   comprovante: 'Comprovante de pagamento',
+  lista_material: 'Lista de material escolar',
 };
 
 /**
@@ -97,7 +98,7 @@ const BENEFICIOS = {
     titular: false,
     parentescos: ['filho'],
     faixa: 'educacional',
-    documentos: ['nota_fiscal'],
+    documentos: ['nota_fiscal', 'lista_material'],
     elegiveis: 'Filhos de 7 a 17 anos (resguardado o ano letivo).',
     observacao: 'Solicitado somente nas competências de fevereiro (envios de 11/01 a 10/02) e de julho (envios de 11/06 a 10/07): um reembolso por dependente em cada uma, e o saldo de uma não acumula para a outra.',
     verba: '',

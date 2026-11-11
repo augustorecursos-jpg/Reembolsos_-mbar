@@ -368,7 +368,7 @@ app.get('/healthz', (_req, res) => {
 });
 
 const TIPOS_ARQUIVO = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' };
-const CAMPOS_ANEXO = ['receita', 'nota_fiscal', 'boleto', 'comprovante', 'outro'];
+const CAMPOS_ANEXO = ['receita', 'nota_fiscal', 'boleto', 'comprovante', 'lista_material', 'outro'];
 const upload = multer({
   storage: multer.diskStorage({
     destination: ANEXOS_DIR,
